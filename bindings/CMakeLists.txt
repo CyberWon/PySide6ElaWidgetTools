@@ -45,6 +45,15 @@ foreach(TYPE_LINE IN LISTS TYPESYSTEM_TYPE_LINES)
     )
 endforeach()
 
+# ElaScreenCaptureManager 类定义在 #ifdef Q_OS_MAC 内，
+# 非 macOS 平台 shiboken 不会生成其 wrapper，需从源文件列表中移除，
+# 否则 AUTOMOC 因找不到该文件而报错。
+if(NOT APPLE)
+    list(REMOVE_ITEM GENERATED_SOURCES
+        ${GENERATED_SOURCES_DIR}/elascreencapturemanager_wrapper.cpp
+    )
+endif()
+
 execute_process(
     COMMAND ${Python3_EXECUTABLE} -c "
 import shiboken6_generator
