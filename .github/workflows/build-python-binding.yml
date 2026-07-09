@@ -112,6 +112,28 @@ jobs:
           grep "inject-code.*glue" bindings/bindings.xml
           rm -f bindings/bindings.xml.bak
 
+      - name: 诊断 Qt 目录结构 + 创建 include 符号链接
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          echo "=== QT_ROOT_DIR ==="; echo "$QT_ROOT_DIR"
+          echo "=== lib 目录 ==="; ls "$QT_ROOT_DIR/lib" | head -20
+          echo "=== include 目录是否存在 ==="; ls -d "$QT_ROOT_DIR/include" 2>&1 || echo "include 目录不存在"
+          echo "=== include/QtCore 是否存在 ==="; ls -d "$QT_ROOT_DIR/include/QtCore" 2>&1 || echo "include/QtCore 不存在"
+          echo "=== framework Headers ==="; ls "$QT_ROOT_DIR/lib/QtCore.framework/Headers" | head -5
+          # Qt framework 安装可能缺少 include/QtCore 链接，创建符号链接
+          if [ ! -d "$QT_ROOT_DIR/include/QtCore" ]; then
+            echo "创建 include 符号链接..."
+            mkdir -p "$QT_ROOT_DIR/include"
+            for fw in QtCore QtGui QtWidgets; do
+              if [ -d "$QT_ROOT_DIR/lib/${fw}.framework/Headers" ]; then
+                ln -sf "$QT_ROOT_DIR/lib/${fw}.framework/Headers" "$QT_ROOT_DIR/include/${fw}"
+                echo "  链接: include/${fw} -> lib/${fw}.framework/Headers"
+              fi
+            done
+            echo "=== 验证 ==="; ls -la "$QT_ROOT_DIR/include"
+          fi
+
       - name: CMake configure
         shell: bash -el {0}
         run: |
