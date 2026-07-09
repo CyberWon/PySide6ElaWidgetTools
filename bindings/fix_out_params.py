@@ -113,6 +113,11 @@ def main() -> int:
         return 1
     with open(path, "r", encoding="utf-8") as fh:
         src = fh.read()
+    # shiboken 6.10+ 的 wrapper 可能不直接 include Python.h，
+    # 但 PyTuple_New / PyTuple_SET_ITEM 需要 Python C API 头文件
+    if "#include <Python.h>" not in src:
+        src = "#include <Python.h>\n" + src
+        print("fix_out_params: injected #include <Python.h> at top of elawindow_wrapper.cpp")
     n = 0
     for fn, case_idx, key_var in TARGETS:
         src = patch_function(src, fn, case_idx, key_var)
