@@ -1,0 +1,189 @@
+# 在 macOS 上构建 ElaWidgetTools 的 PySide6 6.10.3 Python 绑定
+# 产出可直接 `import ElaWidgetTools` 的 .so 模块，打包为 zip artifact 供下载
+
+name: Build Python Binding (macOS)
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'CMakeLists.txt'
+      - 'ElaWidgetTools/**'
+      - 'bindings/**'
+      - '.github/workflows/build-python-binding.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'CMakeLists.txt'
+      - 'ElaWidgetTools/**'
+      - 'bindings/**'
+      - '.github/workflows/build-python-binding.yml'
+  workflow_dispatch:
+
+env:
+  QT_VERSION: 6.10.3
+  PYSIDE6_VERSION: 6.10.3
+  PYTHON_VERSION: "3.10"
+  BUILD_TYPE: Release
+
+concurrency:
+  group: build-python-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-macos:
+    name: macOS / Python 3.10 / PySide6 6.10.3
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout 源码
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 设置 Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 安装 PySide6 / shiboken6 / shiboken6_generator ${{ env.PYSIDE6_VERSION }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            "PySide6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6_generator==${{ env.PYSIDE6_VERSION }}"
+
+      - name: 安装 Qt ${{ env.QT_VERSION }} (clang_64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: clang_64
+          host: mac
+          target: desktop
+          cache: true
+          cache-key-prefix: qt-${{ env.QT_VERSION }}-clang_64
+
+      - name: 安装 Ninja
+        run: brew install ninja
+
+      - name: 查询环境路径
+        id: env
+        run: |
+          QT_ROOT_DIR="$RUNNER_WORKSPACE/Qt/${{ env.QT_VERSION }}/clang_64"
+          echo "qt_root_dir=$QT_ROOT_DIR" >> "$GITHUB_OUTPUT"
+          PY_INC=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
+          PY_SITE=$(python -c "import site; print(site.getsitepackages()[0])")
+          SHIBOKEN_DIR=$(python -c "import shiboken6,os;print(os.path.dirname(shiboken6.__file__))")
+          PYSIDE6_DIR=$(python -c "import PySide6,os;print(os.path.dirname(PySide6.__file__))")
+          echo "py_include=$PY_INC" >> "$GITHUB_OUTPUT"
+          echo "py_site=$PY_SITE" >> "$GITHUB_OUTPUT"
+          echo "shiboken_dir=$SHIBOKEN_DIR" >> "$GITHUB_OUTPUT"
+          echo "pyside6_dir=$PYSIDE6_DIR" >> "$GITHUB_OUTPUT"
+          echo "--- Qt root ---"; ls "$QT_ROOT_DIR"
+          echo "--- PySide6 dir ---"; ls "$PYSIDE6_DIR/lib/cmake/PySide6" | head
+
+      - name: CMake configure
+        run: |
+          cmake -S . -B build-python \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_PREFIX_PATH="${{ steps.env.outputs.qt_root_dir }}" \
+            -DPython3_EXECUTABLE="$(which python)" \
+            -DShiboken6_DIR="${{ steps.env.outputs.shiboken_dir }}/lib/cmake/Shiboken6" \
+            -DPySide6_DIR="${{ steps.env.outputs.pyside6_dir }}/lib/cmake/PySide6" \
+            -DBUILD_PYTHON_BINDINGS=ON
+
+      - name: CMake build (shiboken 生成 + 编译)
+        run: cmake --build build-python --target ElaWidgetToolsPython --parallel
+
+      - name: CMake install (装入 site-packages)
+        run: cmake --install build-python
+
+      - name: 冒烟测试 (import)
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "${{ steps.env.outputs.py_site }}")
+          import ElaWidgetTools as E
+          print("ElaWidgetTools loaded:", E.__file__)
+          # 抽查几个关键类
+          for name in ["ElaWindow","ElaMessageBar","ElaIconType","ElaNavigationRouter"]:
+              assert hasattr(E, name), f"missing: {name}"
+          print("smoke test passed")
+          PY
+
+      - name: 打包 .so + .pyi 到 dist/
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # 主 .so 模块
+          cp "${{ steps.env.outputs.py_site }}/ElaWidgetTools"*.so dist/
+          # 列出产物
+          ls -lh dist/
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElaWidgetTools-macos-py${{ env.PYTHON_VERSION }}-pyside${{ env.PYSIDE6_VERSION }}
+          path: dist/*
+          retention-days: 30
+          if-no-files-found: error
+
+  release:
+    name: 发布到 GitHub Release
+    needs: build-macos
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - name: 下载 artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 打包为 zip
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd artifacts
+          for d in */; do
+            name="${d%/}"
+            (cd "$d" && zip -r "../../dist/${name}.zip" .)
+          done
+          cd ..
+          ls -lh dist/
+
+      - name: 用日期生成 tag 并清理同日旧 release
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="py-v$(date -u +%Y.%m.%d)"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "存在同日 release $tag，删除以重建"
+            gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: 创建 Release 并上传产物
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            自动构建 Python 绑定 — 提交 `${{ github.sha }}`
+
+            平台：macOS 15 (clang_64)
+            Python：${{ env.PYTHON_VERSION }}
+            PySide6：${{ env.PYSIDE6_VERSION }}
+            Qt：${{ env.QT_VERSION }}
+
+            将 zip 解压后把 `ElaWidgetTools.*.so` 放入对应 Python 的 site-packages 即可 `import ElaWidgetTools`。
+          fail_on_unmatched_files: true
+          files: dist/*.zip

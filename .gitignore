@@ -1,0 +1,32 @@
+build/
+*.user
+*.autosave
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.exe
+*.app
+.DS_Store
+.qtc_clangd/
+CMakeLists.txt.user*
+cmake-build-*/
+.idea/
+.vscode/
+*.qm
+/.vs
+/Install/
+/CMakeSettings.json
+__pycache__/
+*.pyc
+
+# 本地构建产物
+/build-python/
+/build-*/
+/Qt6.10.3/
+/Qt/
+
+# 本地资源（体积大，不入库）
+/PySide6Example/Resource/
+/ElaWidgetToolsExample/Resource/

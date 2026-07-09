@@ -1,0 +1,242 @@
+# 自动编译 ElaWidgetToolsExample
+# 在 Windows / Linux / macOS 最新系统镜像上使用 Qt 6.10.3 构建示例程序
+
+name: Build Example
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'CMakeLists.txt'
+      - 'ElaWidgetTools/**'
+      - 'ElaWidgetToolsExample/**'
+      - '.github/workflows/build-example.yml'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  QT_VERSION: 6.10.3
+  BUILD_TYPE: Release
+
+# 按 ref 分组，让 tag run 与 branch run 落在不同组互不干扰；
+# 同一 ref 上的连续 push 才会取消上一次未完成的 run。
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows / MSVC 2022
+            os: windows-latest
+            qt_arch: win64_msvc2022_64
+            qt_host: windows
+          - name: Linux / GCC
+            os: ubuntu-latest
+            qt_arch: linux_gcc_64
+            qt_host: linux
+          - name: macOS / Clang
+            os: macos-latest
+            qt_arch: clang_64
+            qt_host: mac
+
+    steps:
+      - name: Checkout 源码
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 安装 Linux 系统依赖
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ninja-build \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libegl1 \
+            libfontconfig1 \
+            libdbus-1-3 \
+            libxkbcommon-dev \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-sync1 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxcb-xkb1
+
+      - name: 安装 Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: ${{ matrix.qt_arch }}
+          host: ${{ matrix.qt_host }}
+          target: desktop
+          cache: true
+          cache-key-prefix: qt-${{ env.QT_VERSION }}-${{ matrix.qt_arch }}
+          setup-python: true
+
+      - name: 配置 MSVC 开发环境
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: 安装 Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: CMake configure
+        shell: bash
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+            -DQT_SDK_DIR="$QT_ROOT_DIR" \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+
+      - name: CMake build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: CMake install
+        run: cmake --install build --config ${{ env.BUILD_TYPE }}
+
+      - name: 部署 Qt 运行时 (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          APP="Install/ElaWidgetToolsExample/ElaWidgetToolsExample.app"
+          "$QT_ROOT_DIR/bin/macdeployqt" "$APP" -verbose=1
+          # 确认 frameworks 已嵌入
+          ls "$APP/Contents/Frameworks/" | head
+
+      - name: 部署 Qt 运行时 (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+
+          # 下载 linuxdeploy 与 qt plugin（continuous 是项目 release tag 名，对应最新稳定构建）
+          # 注意 plugin 必须命名为 linuxdeploy-plugin-qt（不含 .AppImage 扩展），
+          # 且与 linuxdeploy 在同一 PATH 下，linuxdeploy 才能识别 --plugin qt
+          BASE=https://github.com/linuxdeploy
+          curl -fsSL -o linuxdeploy \
+            "$BASE/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          curl -fsSL -o linuxdeploy-plugin-qt \
+            "$BASE/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy linuxdeploy-plugin-qt
+          export PATH="$PWD:$PATH"
+
+          # 构造符合 AppDir 规范的目录树
+          APPDIR="appdir"
+          mkdir -p "$APPDIR/usr/bin" \
+                   "$APPDIR/usr/share/applications" \
+                   "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+          cp Install/ElaWidgetToolsExample/ElaWidgetToolsExample "$APPDIR/usr/bin/"
+
+          cat > "$APPDIR/usr/share/applications/ElaWidgetToolsExample.desktop" <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=ElaWidgetToolsExample
+          Exec=ElaWidgetToolsExample
+          Icon=ElaWidgetToolsExample
+          Categories=Utility;
+          DESKTOP
+
+          # 1x1 透明 PNG 占位图标，linuxdeploy 要求 desktop 文件指向的 icon 必须存在
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" \
+            | base64 -d > "$APPDIR/usr/share/icons/hicolor/256x256/apps/ElaWidgetToolsExample.png"
+
+          export QMAKE="$QT_ROOT_DIR/bin/qmake"
+          export PATH="$QT_ROOT_DIR/bin:$PATH"
+          export LD_LIBRARY_PATH="$QT_ROOT_DIR/lib:${LD_LIBRARY_PATH:-}"
+
+          ./linuxdeploy --appimage-extract-and-run \
+            --appdir "$APPDIR" \
+            --plugin qt \
+            --output appimage
+
+          # 用打包好的 AppImage 替换原裸二进制
+          rm -rf Install/ElaWidgetToolsExample
+          mkdir -p Install/ElaWidgetToolsExample
+          mv ElaWidgetToolsExample*.AppImage Install/ElaWidgetToolsExample/ElaWidgetToolsExample.AppImage
+          rm -f linuxdeploy linuxdeploy-plugin-qt
+
+          ls -lh Install/ElaWidgetToolsExample/
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElaWidgetToolsExample-${{ runner.os }}-qt${{ env.QT_VERSION }}
+          path: Install/
+          retention-days: 14
+          if-no-files-found: error
+
+  release:
+    name: 发布到 GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    # 仅 main 分支 push 与手动触发会发版，PR 不发版
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - name: 下载所有平台 artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 打包每平台为 zip
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd artifacts
+          for d in */; do
+            name="${d%/}"
+            (cd "$d" && zip -r "../../dist/${name}.zip" .)
+          done
+          cd ..
+          ls -lh dist/
+
+      - name: 用日期生成 tag 并清理同日旧 release
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # tag 格式 vYYYY.MM.DD（UTC，runner 时区一致）
+          tag="v$(date -u +%Y.%m.%d)"
+          # 同日已有 release（同日多次 push 场景）连同 tag 一并删除，
+          # 让本次 build 的 SHA 重新绑定到该 tag，避免 release/tag/artifact 三者不一致
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "存在同日 release $tag，删除以重建"
+            gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: 创建 Release 并上传产物
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            自动构建 — 提交 `${{ github.sha }}`，由 GitHub Actions 在 Qt 6.10.3 上多平台产出。
+
+            各 zip 包含 `ElaWidgetToolsExample` 及其平台对应运行时（Windows windeployqt / macOS macdeployqt / Linux linuxdeploy AppImage）。
+          fail_on_unmatched_files: true
+          files: dist/*.zip

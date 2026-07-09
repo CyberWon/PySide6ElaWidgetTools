@@ -1,0 +1,197 @@
+﻿#include "ElaApplication.h"
+
+#include "ElaTheme.h"
+#include "ElaWinShadowHelper.h"
+#include "private/ElaApplicationPrivate.h"
+#include <QApplication>
+#include <QCursor>
+#include <QFontDatabase>
+#include <QFontInfo>
+#include <QWidget>
+#include <QDebug>
+#include <utility>
+Q_SINGLETON_CREATE_CPP(ElaApplication)
+ElaApplication::ElaApplication(QObject* parent)
+    : QObject{parent}, d_ptr(new ElaApplicationPrivate())
+{
+    Q_D(ElaApplication);
+    d->q_ptr = this;
+    d->_pElaMicaImagePath = ":/include/Image/MicaBase.png";
+    d->_pWindowDisplayMode = ElaApplicationType::Normal;
+    d->_themeMode = eTheme->getThemeMode();
+    connect(eTheme, &ElaTheme::themeModeChanged, d, &ElaApplicationPrivate::onThemeModeChanged);
+}
+
+ElaApplication::~ElaApplication()
+{
+}
+
+void ElaApplication::setWindowDisplayMode(ElaApplicationType::WindowDisplayMode windowDisplayType)
+{
+    Q_D(ElaApplication);
+    auto lastDisplayMode = d->_pWindowDisplayMode;
+    if (lastDisplayMode == windowDisplayType)
+    {
+        return;
+    }
+    if (lastDisplayMode == ElaApplicationType::ElaMica)
+    {
+        d->_resetAllMicaWidget();
+    }
+    switch (windowDisplayType)
+    {
+    case ElaApplicationType::Normal:
+    {
+        break;
+    }
+    case ElaApplicationType::ElaMica:
+    {
+        d->_pWindowDisplayMode = windowDisplayType;
+        d->_initMicaBaseImage(QImage(d->_pElaMicaImagePath));
+        break;
+    }
+    default:
+    {
+        break;
+    }
+    }
+#ifdef Q_OS_WIN
+    for (auto widget: d->_micaWidgetList)
+    {
+        ElaWinShadowHelper::getInstance()->setWindowDisplayMode(widget, windowDisplayType, lastDisplayMode);
+        ElaWinShadowHelper::getInstance()->setWindowThemeMode(widget->winId(), d->_themeMode == ElaThemeType::Light);
+    }
+#endif
+    if (windowDisplayType != ElaApplicationType::ElaMica)
+    {
+        d->_pWindowDisplayMode = windowDisplayType;
+        Q_EMIT pWindowDisplayModeChanged();
+    }
+}
+
+ElaApplicationType::WindowDisplayMode ElaApplication::getWindowDisplayMode() const
+{
+    Q_D(const ElaApplication);
+    return d->_pWindowDisplayMode;
+}
+
+void ElaApplication::setElaMicaImagePath(QString micaImagePath)
+{
+    Q_D(ElaApplication);
+    d->_pElaMicaImagePath = std::move(micaImagePath);
+    d->_initMicaBaseImage(QImage(d->_pElaMicaImagePath));
+    Q_EMIT pElaMicaImagePathChanged();
+}
+
+QString ElaApplication::getElaMicaImagePath() const
+{
+    Q_D(const ElaApplication);
+    return d->_pElaMicaImagePath;
+}
+
+void ElaApplication::init()
+{
+    Q_D(ElaApplication);
+    Q_INIT_RESOURCE(ElaWidgetTools);
+    QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+    QFontDatabase::addApplicationFont(":/include/Font/ElaAwesome.ttf");
+    //默认字体 - 根据平台设置
+    QFont font = qApp->font();
+    font.setPixelSize(13);
+
+    QStringList fontFamilies;
+#ifdef Q_OS_WIN
+    fontFamilies << "Microsoft YaHei UI" << "SimSun" << "Arial";
+#elif defined(Q_OS_MACOS)
+    fontFamilies << "PingFang SC" << "Heiti SC" << "STHeiti" << "Helvetica";
+#else
+    fontFamilies << "Noto Sans CJK SC" << "Source Han Sans SC" << "WenQuanYi Micro Hei" << "DejaVu Sans";
+#endif
+
+    bool fontFound = false;
+    for (const QString& family : fontFamilies)
+    {
+        QFont testFont(family);
+        if (QFontInfo(testFont).family() == family)
+        {
+            font.setFamily(family);
+            fontFound = true;
+            break;
+        }
+    }
+
+    if (!fontFound)
+    {
+        qWarning() << "No preferred fonts found, using system default font";
+    }
+    font.setHintingPreference(QFont::PreferNoHinting);
+    qApp->setFont(font);
+#ifdef Q_OS_WIN
+    eWinHelper->initWinAPI();
+#endif
+    d->syncSystemTheme();
+}
+
+void ElaApplication::syncWindowDisplayMode(QWidget* widget, bool isSync)
+{
+    Q_D(ElaApplication);
+    if (!widget)
+    {
+        return;
+    }
+    if (isSync)
+    {
+        d->_micaWidgetList.append(widget);
+        widget->installEventFilter(d);
+    }
+    else
+    {
+        d->_micaWidgetList.removeOne(widget);
+        widget->removeEventFilter(d);
+    }
+    switch (d->_pWindowDisplayMode)
+    {
+    case ElaApplicationType::Normal:
+    case ElaApplicationType::ElaMica:
+    {
+        if (isSync)
+        {
+            if (d->_pWindowDisplayMode == ElaApplicationType::WindowDisplayMode::ElaMica)
+            {
+                d->_updateMica(widget, false);
+            }
+        }
+        break;
+    }
+    default:
+    {
+#ifdef Q_OS_WIN
+        if (isSync)
+        {
+            ElaWinShadowHelper::getInstance()->setWindowDisplayMode(widget, d->_pWindowDisplayMode, ElaApplicationType::Normal);
+            ElaWinShadowHelper::getInstance()->setWindowThemeMode(widget->winId(), d->_themeMode == ElaThemeType::Light);
+        }
+        else
+        {
+            ElaWinShadowHelper::getInstance()->setWindowDisplayMode(widget, ElaApplicationType::Normal, d->_pWindowDisplayMode);
+            ElaWinShadowHelper::getInstance()->setWindowThemeMode(widget->winId(), true);
+        }
+#endif
+        break;
+    }
+    }
+}
+
+bool ElaApplication::containsCursorToItem(QWidget* item)
+{
+    if (!item || !item->isVisible())
+    {
+        return false;
+    }
+    auto itemRect = QRect(item->mapToGlobal(QPoint(0, 0)), item->size());
+    if (itemRect.contains(QCursor::pos()))
+    {
+        return true;
+    }
+    return false;
+}
