@@ -98,6 +98,20 @@ jobs:
           echo "--- Qt root ---"; ls "$QT_ROOT_DIR"
           echo "--- PySide6 dir ---"; ls "$PYSIDE6_DIR/lib/cmake/PySide6" | head
 
+      - name: 替换 bindings.xml 中的硬编码 PySide6 glue 路径
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          # bindings.xml 引用了开发者本机的 PySide6 glue 文件路径，
+          # 替换为 runner 上实际的 PySide6 安装路径
+          PYSIDE6_GLUE_DIR="${{ steps.env.outputs.pyside6_dir }}/glue"
+          echo "PySide6 glue dir: $PYSIDE6_GLUE_DIR"
+          ls "$PYSIDE6_GLUE_DIR" | head
+          sed -i.bak "s|/Users/cyber/miniconda3/envs/aidub/lib/python3.10/site-packages/PySide6/glue|$PYSIDE6_GLUE_DIR|g" bindings/bindings.xml
+          echo "--- 替换后的 inject-code 行 ---"
+          grep "inject-code.*glue" bindings/bindings.xml
+          rm -f bindings/bindings.xml.bak
+
       - name: CMake configure
         shell: bash -el {0}
         run: |
