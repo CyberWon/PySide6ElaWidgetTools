@@ -113,12 +113,18 @@ jobs:
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS_PATH=%%i
           call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+          echo --- ElaWidgetTools dir check ---
+          dir ElaWidgetTools
+          echo --- CMake configure ---
           cmake -S . -B build-python -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ^
             -DCMAKE_PREFIX_PATH="%QT_ROOT_DIR%" ^
             -DPython3_EXECUTABLE="%PYTHON_EXE%" ^
             -DShiboken6_DIR="%SHIBOKEN_DIR%/lib/cmake/Shiboken6" ^
             -DPySide6_DIR="%PYSIDE6_DIR%/lib/cmake/PySide6" ^
             -DBUILD_PYTHON_BINDINGS=ON
+          echo --- shiboken include-paths in build.ninja ---
+          findstr /C:"include-paths" build-python\build.ninja
+          echo --- CMake build ---
           cmake --build build-python --target ElaWidgetToolsPython --parallel
           cmake --install build-python
 
