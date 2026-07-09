@@ -75,11 +75,6 @@ jobs:
           cache: true
           cache-key-prefix: qt-${{ env.QT_VERSION }}-win64_msvc2022_64
 
-      - name: 设置 MSVC 开发环境
-        uses: ilammy/msvc-dev-tools@v1
-        with:
-          arch: x64
-
       - name: 查询环境路径
         id: env
         shell: bash
@@ -127,8 +122,6 @@ jobs:
         shell: bash
         run: |
           cmake -S . -B build-python \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DCMAKE_PREFIX_PATH="${{ steps.env.outputs.qt_root_dir }}" \
             -DPython3_EXECUTABLE="$(which python)" \
             -DShiboken6_DIR="${{ steps.env.outputs.shiboken_dir }}/lib/cmake/Shiboken6" \
@@ -137,11 +130,11 @@ jobs:
 
       - name: CMake build (shiboken 生成 + 编译)
         shell: bash
-        run: cmake --build build-python --target ElaWidgetToolsPython --parallel
+        run: cmake --build build-python --target ElaWidgetToolsPython --config Release --parallel
 
       - name: CMake install (装入 site-packages)
         shell: bash
-        run: cmake --install build-python
+        run: cmake --install build-python --config Release
 
       - name: 冒烟测试 (import)
         shell: bash
