@@ -86,7 +86,6 @@ jobs:
         run: |
           set -euo pipefail
           python --version
-          QT_ROOT_DIR="$RUNNER_WORKSPACE/Qt/${{ env.QT_VERSION }}/clang_64"
           echo "qt_root_dir=$QT_ROOT_DIR" >> "$GITHUB_OUTPUT"
           PY_INC=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
           PY_SITE=$(python -c "import site; print(site.getsitepackages()[0])")
