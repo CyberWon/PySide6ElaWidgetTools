@@ -46,21 +46,24 @@ jobs:
 
       - name: 安装 Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
+        id: py
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: 验证 Python 版本
         shell: bash
         run: |
-          python --version
-          which python
-          python -c "import sys; print('exec:', sys.executable)"
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          echo "Python path: $PYTHON"
+          "$PYTHON" --version
+          "$PYTHON" -c "import sys; print('exec:', sys.executable)"
 
       - name: 安装 PySide6 / shiboken6 / shiboken6_generator ${{ env.PYSIDE6_VERSION }}
         shell: bash
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install \
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          "$PYTHON" -m pip install --upgrade pip
+          "$PYTHON" -m pip install \
             "PySide6==${{ env.PYSIDE6_VERSION }}" \
             "shiboken6==${{ env.PYSIDE6_VERSION }}" \
             "shiboken6_generator==${{ env.PYSIDE6_VERSION }}"
@@ -75,32 +78,29 @@ jobs:
           cache: true
           cache-key-prefix: qt-${{ env.QT_VERSION }}-win64_msvc2022_64
 
-      - name: 查询环境路径
+      - name: 查询环境路径并写入 GITHUB_ENV
         id: env
         shell: bash
         run: |
           set -euo pipefail
-          python --version
-          echo "qt_root_dir=$QT_ROOT_DIR" >> "$GITHUB_OUTPUT"
-          PY_INC=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
-          PY_SITE=$(python -c "import site; print(site.getsitepackages()[0])")
-          SHIBOKEN_DIR=$(python -c "import shiboken6,os;print(os.path.dirname(shiboken6.__file__))")
-          PYSIDE6_DIR=$(python -c "import PySide6,os;print(os.path.dirname(PySide6.__file__))")
-          echo "py_include=$PY_INC" >> "$GITHUB_OUTPUT"
-          echo "py_site=$PY_SITE" >> "$GITHUB_OUTPUT"
-          echo "shiboken_dir=$SHIBOKEN_DIR" >> "$GITHUB_OUTPUT"
-          echo "pyside6_dir=$PYSIDE6_DIR" >> "$GITHUB_OUTPUT"
-          echo "--- Qt root ---"; ls "$QT_ROOT_DIR"
-          echo "--- PySide6 dir ---"; ls "$PYSIDE6_DIR/lib/cmake/PySide6" | head
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          echo "PYTHON_EXE=$PYTHON" >> "$GITHUB_ENV"
+          echo "QT_ROOT_DIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          PY_SITE=$("$PYTHON" -c "import site; print(site.getsitepackages()[0])")
+          SHIBOKEN_DIR=$("$PYTHON" -c "import shiboken6,os;print(os.path.dirname(shiboken6.__file__))")
+          PYSIDE6_DIR=$("$PYTHON" -c "import PySide6,os;print(os.path.dirname(PySide6.__file__))")
+          echo "PY_SITE=$PY_SITE" >> "$GITHUB_ENV"
+          echo "SHIBOKEN_DIR=$SHIBOKEN_DIR" >> "$GITHUB_ENV"
+          echo "PYSIDE6_DIR=$PYSIDE6_DIR" >> "$GITHUB_ENV"
+          echo "--- Qt root ---"; ls "$QT_ROOT_DIR" | head
+          echo "--- PySide6 cmake ---"; ls "$PYSIDE6_DIR/lib/cmake/PySide6" | head
+          echo "--- ElaWidgetTools dir ---"; ls -d ElaWidgetTools/ && echo "ElaWidgetTools exists"
 
       - name: 替换 bindings.xml 中的硬编码 PySide6 glue 路径
         shell: bash
         run: |
           set -euo pipefail
-          # bindings.xml 引用了开发者本机的 PySide6 glue 文件路径，
-          # 替换为 runner 上实际的 PySide6 安装路径（Windows 路径用正斜杠）
-          PYSIDE6_GLUE_DIR="${{ steps.env.outputs.pyside6_dir }}/glue"
-          # 将 Windows 反斜杠路径转为正斜杠，供 sed 使用
+          PYSIDE6_GLUE_DIR="${PYSIDE6_DIR}/glue"
           PYSIDE6_GLUE_DIR_FWD=$(echo "$PYSIDE6_GLUE_DIR" | sed 's|\\|/|g')
           echo "PySide6 glue dir: $PYSIDE6_GLUE_DIR_FWD"
           ls "$PYSIDE6_GLUE_DIR" | head
@@ -108,41 +108,27 @@ jobs:
           echo "--- 替换后的 inject-code 行 ---"
           grep "inject-code.*glue" bindings/bindings.xml
 
-      - name: 诊断 Qt 目录结构
-        shell: bash
+      - name: CMake configure + build + install (MSVC + Ninja)
+        shell: cmd
         run: |
-          set -euo pipefail
-          echo "=== QT_ROOT_DIR ==="; echo "$QT_ROOT_DIR"
-          echo "=== lib 目录 ==="; ls "$QT_ROOT_DIR/lib" | head -20
-          echo "=== include 目录 ==="; ls "$QT_ROOT_DIR/include" | head -10
-          echo "=== include/QtCore ==="; ls "$QT_ROOT_DIR/include/QtCore" | head -5
-          echo "=== bin 目录 ==="; ls "$QT_ROOT_DIR/bin" | head -10
-
-      - name: CMake configure
-        shell: bash
-        run: |
-          cmake -S . -B build-python \
-            -DCMAKE_PREFIX_PATH="${{ steps.env.outputs.qt_root_dir }}" \
-            -DPython3_EXECUTABLE="$(which python)" \
-            -DShiboken6_DIR="${{ steps.env.outputs.shiboken_dir }}/lib/cmake/Shiboken6" \
-            -DPySide6_DIR="${{ steps.env.outputs.pyside6_dir }}/lib/cmake/PySide6" \
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS_PATH=%%i
+          call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+          cmake -S . -B build-python -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ^
+            -DCMAKE_PREFIX_PATH="%QT_ROOT_DIR%" ^
+            -DPython3_EXECUTABLE="%PYTHON_EXE%" ^
+            -DShiboken6_DIR="%SHIBOKEN_DIR%/lib/cmake/Shiboken6" ^
+            -DPySide6_DIR="%PYSIDE6_DIR%/lib/cmake/PySide6" ^
             -DBUILD_PYTHON_BINDINGS=ON
-
-      - name: CMake build (shiboken 生成 + 编译)
-        shell: bash
-        run: cmake --build build-python --target ElaWidgetToolsPython --config Release --parallel
-
-      - name: CMake install (装入 site-packages)
-        shell: bash
-        run: cmake --install build-python --config Release
+          cmake --build build-python --target ElaWidgetToolsPython --parallel
+          cmake --install build-python
 
       - name: 冒烟测试 (import)
         shell: bash
         run: |
-          # Windows 上需先 import PySide6 以加载 Qt DLL 到搜索路径
-          python - <<'PY'
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          "$PYTHON" - <<'PY'
           import sys
-          sys.path.insert(0, r"${{ steps.env.outputs.py_site }}")
+          sys.path.insert(0, r"${{ env.PY_SITE }}")
           import PySide6.QtWidgets  # 确保 Qt DLL 路径已注册
           import ElaWidgetTools as E
           print("ElaWidgetTools loaded:", E.__file__)
@@ -156,9 +142,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          # 主 .pyd 模块（Windows 扩展模块后缀）
-          cp "${{ steps.env.outputs.py_site }}"/ElaWidgetTools*.pyd dist/
-          # 列出产物
+          cp "${PY_SITE}"/ElaWidgetTools*.pyd dist/
           ls -lh dist/
 
       - name: 上传构建产物
