@@ -130,9 +130,14 @@ target_link_libraries(${BINDINGS_MODULE_TARGET} PRIVATE
     PySide6::pyside6
 )
 
+if(WIN32)
+    set(_MODULE_SUFFIX ".${Python3_SOABI}.pyd")
+else()
+    set(_MODULE_SUFFIX ".${Python3_SOABI}.so")
+endif()
 set_target_properties(${BINDINGS_MODULE_TARGET} PROPERTIES
     PREFIX ""
-    SUFFIX ".${Python3_SOABI}.so"
+    SUFFIX "${_MODULE_SUFFIX}"
     OUTPUT_NAME "ElaWidgetTools"
 )
 
