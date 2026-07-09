@@ -89,6 +89,14 @@ endif()
 
 list(JOIN SHIBOKEN_INCLUDE_DIRS "${PATH_SEP}" SHIBOKEN_INCLUDE_DIRS_STR)
 
+# CMake 在 add_custom_command 的 COMMAND 参数中将分号解释为列表分隔符，
+# 会导致 --include-paths=path1;path2 被拆分为多个独立参数。
+# 用 \\; 转义，使分号作为字面字符保留在单个参数中。
+# (Windows 上 shiboken 用分号分隔 include 路径；Unix 上用冒号，无需转义)
+if(WIN32)
+    string(REPLACE ";" "\\;" SHIBOKEN_INCLUDE_DIRS_STR "${SHIBOKEN_INCLUDE_DIRS_STR}")
+endif()
+
 add_custom_command(
     OUTPUT ${GENERATED_SOURCES}
     COMMAND ${SHIBOKEN6_GENERATOR}
