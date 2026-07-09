@@ -69,8 +69,8 @@ def build_replacement(key_var: str, indent: str) -> str:
         "    PyObject *_pyKey = Shiboken::Conversions::copyToPython("
         "SbkPySide6_QtCoreTypeConverters[SBK_QString_IDX], &" + key_var + ");",
         "    pyResult = PyTuple_New(2);",
-        "    PyTuple_SET_ITEM(pyResult, 0, _pyNr);",
-        "    PyTuple_SET_ITEM(pyResult, 1, _pyKey);",
+        "    PyTuple_SetItem(pyResult, 0, _pyNr);",
+        "    PyTuple_SetItem(pyResult, 1, _pyKey);",
         "}",
     ]
     return "\n".join(indent + line for line in body)
