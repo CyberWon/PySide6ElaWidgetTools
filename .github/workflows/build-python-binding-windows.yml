@@ -108,7 +108,7 @@ jobs:
           echo "--- 替换后的 inject-code 行 ---"
           grep "inject-code.*glue" bindings/bindings.xml
 
-      - name: CMake configure + build + install (MSVC + Ninja)
+      - name: CMake configure + build (MSVC + Ninja)
         shell: cmd
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS_PATH=%%i
@@ -122,11 +122,19 @@ jobs:
             -DShiboken6_DIR="%SHIBOKEN_DIR%/lib/cmake/Shiboken6" ^
             -DPySide6_DIR="%PYSIDE6_DIR%/lib/cmake/PySide6" ^
             -DBUILD_PYTHON_BINDINGS=ON
-          echo --- shiboken include-paths in build.ninja ---
-          findstr /C:"include-paths" build-python\build.ninja
           echo --- CMake build ---
           cmake --build build-python --target ElaWidgetToolsPython --parallel
-          cmake --install build-python
+
+      - name: 复制 .pyd 到 site-packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "--- 查找构建产物 ---"
+          ls -lh build-python/bindings/ElaWidgetTools*.pyd
+          echo "--- 复制到 site-packages ---"
+          cp build-python/bindings/ElaWidgetTools*.pyd "${PY_SITE}/"
+          echo "--- 验证 ---"
+          ls -lh "${PY_SITE}"/ElaWidgetTools*.pyd
 
       - name: 冒烟测试 (import)
         shell: bash
