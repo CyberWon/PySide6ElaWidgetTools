@@ -1,0 +1,340 @@
+# 使用 PyInstaller 将 PySide6Example 打包为可执行客户端
+# macOS 产出 .app，Windows 产出 .exe
+# 每个 job 先构建 ElaWidgetTools 绑定模块装入 site-packages，再打包
+
+name: Build Client App
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'CMakeLists.txt'
+      - 'ElaWidgetTools/**'
+      - 'bindings/**'
+      - 'PySide6Example/**'
+      - '.github/workflows/build-client.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'CMakeLists.txt'
+      - 'ElaWidgetTools/**'
+      - 'bindings/**'
+      - 'PySide6Example/**'
+      - '.github/workflows/build-client.yml'
+  workflow_dispatch:
+
+env:
+  QT_VERSION: 6.10.3
+  PYSIDE6_VERSION: 6.10.3
+  BUILD_TYPE: Release
+
+concurrency:
+  group: build-client-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-macos-client:
+    name: macOS Client / Python 3.10
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout 源码
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 用 conda 安装 Python 3.10
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: "3.10"
+          miniforge-variant: Miniforge3
+          use-mamba: true
+          channels: conda-forge
+          channel-priority: strict
+          auto-activate-base: true
+
+      - name: 安装 PySide6 / shiboken6 / shiboken6_generator + PyInstaller
+        shell: bash -el {0}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "PySide6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6_generator==${{ env.PYSIDE6_VERSION }}" \
+            pyinstaller
+
+      - name: 安装 Qt ${{ env.QT_VERSION }} (clang_64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: clang_64
+          host: mac
+          target: desktop
+          cache: true
+          cache-key-prefix: qt-${{ env.QT_VERSION }}-clang_64
+
+      - name: 安装 Ninja
+        run: brew install ninja
+
+      - name: 查询环境路径
+        id: env
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          PY_SITE=$(python -c "import site; print(site.getsitepackages()[0])")
+          SHIBOKEN_DIR=$(python -c "import shiboken6,os;print(os.path.dirname(shiboken6.__file__))")
+          PYSIDE6_DIR=$(python -c "import PySide6,os;print(os.path.dirname(PySide6.__file__))")
+          echo "py_site=$PY_SITE" >> "$GITHUB_OUTPUT"
+          echo "shiboken_dir=$SHIBOKEN_DIR" >> "$GITHUB_OUTPUT"
+          echo "pyside6_dir=$PYSIDE6_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: 替换 bindings.xml 中的硬编码 PySide6 glue 路径
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          PYSIDE6_GLUE_DIR="${{ steps.env.outputs.pyside6_dir }}/glue"
+          sed -i.bak "s|/Users/cyber/miniconda3/envs/aidub/lib/python3.10/site-packages/PySide6/glue|$PYSIDE6_GLUE_DIR|g" bindings/bindings.xml
+          rm -f bindings/bindings.xml.bak
+
+      - name: 创建 Qt include 符号链接
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          if [ ! -d "$QT_ROOT_DIR/include/QtCore" ]; then
+            mkdir -p "$QT_ROOT_DIR/include"
+            for fw in QtCore QtGui QtWidgets; do
+              if [ -d "$QT_ROOT_DIR/lib/${fw}.framework/Headers" ]; then
+                ln -sf "$QT_ROOT_DIR/lib/${fw}.framework/Headers" "$QT_ROOT_DIR/include/${fw}"
+              fi
+            done
+          fi
+
+      - name: CMake configure + build (绑定模块)
+        shell: bash -el {0}
+        run: |
+          cmake -S . -B build-python \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
+            -DPython3_EXECUTABLE="$(which python)" \
+            -DShiboken6_DIR="${{ steps.env.outputs.shiboken_dir }}/lib/cmake/Shiboken6" \
+            -DPySide6_DIR="${{ steps.env.outputs.pyside6_dir }}/lib/cmake/PySide6" \
+            -DBUILD_PYTHON_BINDINGS=ON
+          cmake --build build-python --target ElaWidgetToolsPython --parallel
+
+      - name: 复制 .so 到 site-packages
+        shell: bash -el {0}
+        run: |
+          cp build-python/bindings/ElaWidgetTools*.so "${{ steps.env.outputs.py_site }}/"
+          ls -lh "${{ steps.env.outputs.py_site }}"/ElaWidgetTools*.so
+
+      - name: 冒烟测试 (import)
+        shell: bash -el {0}
+        run: |
+          python -c "import ElaWidgetTools; print('ElaWidgetTools:', ElaWidgetTools.__file__)"
+
+      - name: PyInstaller 打包
+        shell: bash -el {0}
+        run: |
+          cd PySide6Example
+          pyinstaller \
+            --noconfirm \
+            --windowed \
+            --name "ElaWidgetToolsDemo" \
+            --osx-bundle-identifier "com.elawidgettools.demo" \
+            --hidden-import ElaWidgetTools \
+            --add-data "mainwindow.py:." \
+            --add-data "ExamplePage:ExamplePage" \
+            --add-data "ModelView:ModelView" \
+            main.py
+          ls -lh dist/
+
+      - name: 打包 .app 为 zip
+        shell: bash -el {0}
+        run: |
+          cd PySide6Example/dist
+          zip -r -y "../../ElaWidgetToolsDemo-macos.zip" "ElaWidgetToolsDemo.app"
+          cd ../..
+          ls -lh ElaWidgetToolsDemo-macos.zip
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElaWidgetToolsDemo-macos
+          path: ElaWidgetToolsDemo-macos.zip
+          retention-days: 30
+
+  build-windows-client:
+    name: Windows Client / Python 3.10
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout 源码
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 安装 Python 3.10
+        uses: actions/setup-python@v5
+        id: py
+        with:
+          python-version: "3.10"
+
+      - name: 安装 PySide6 / shiboken6 / shiboken6_generator + PyInstaller
+        shell: bash
+        run: |
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          "$PYTHON" -m pip install --upgrade pip
+          "$PYTHON" -m pip install \
+            "PySide6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6_generator==${{ env.PYSIDE6_VERSION }}" \
+            pyinstaller
+
+      - name: 安装 Qt ${{ env.QT_VERSION }} (win64_msvc2022_64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          host: windows
+          target: desktop
+          cache: true
+          cache-key-prefix: qt-${{ env.QT_VERSION }}-win64_msvc2022_64
+
+      - name: 查询环境路径并写入 GITHUB_ENV
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          echo "PYTHON_EXE=$PYTHON" >> "$GITHUB_ENV"
+          echo "QT_ROOT_DIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          PY_SITE=$("$PYTHON" -c "import site; print(site.getsitepackages()[0])")
+          SHIBOKEN_DIR=$("$PYTHON" -c "import shiboken6,os;print(os.path.dirname(shiboken6.__file__))")
+          PYSIDE6_DIR=$("$PYTHON" -c "import PySide6,os;print(os.path.dirname(PySide6.__file__))")
+          echo "PY_SITE=$PY_SITE" >> "$GITHUB_ENV"
+          echo "SHIBOKEN_DIR=$SHIBOKEN_DIR" >> "$GITHUB_ENV"
+          echo "PYSIDE6_DIR=$PYSIDE6_DIR" >> "$GITHUB_ENV"
+
+      - name: 替换 bindings.xml 中的硬编码 PySide6 glue 路径
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYSIDE6_GLUE_DIR_FWD=$(echo "${PYSIDE6_DIR}/glue" | sed 's|\\|/|g')
+          sed -i "s|/Users/cyber/miniconda3/envs/aidub/lib/python3.10/site-packages/PySide6/glue|$PYSIDE6_GLUE_DIR_FWD|g" bindings/bindings.xml
+
+      - name: CMake configure + build (绑定模块, MSVC + Ninja)
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS_PATH=%%i
+          call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+          cmake -S . -B build-python -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ^
+            -DCMAKE_PREFIX_PATH="%QT_ROOT_DIR%" ^
+            -DPython3_EXECUTABLE="%PYTHON_EXE%" ^
+            -DShiboken6_DIR="%SHIBOKEN_DIR%/lib/cmake/Shiboken6" ^
+            -DPySide6_DIR="%PYSIDE6_DIR%/lib/cmake/PySide6" ^
+            -DBUILD_PYTHON_BINDINGS=ON
+          cmake --build build-python --target ElaWidgetToolsPython --parallel
+
+      - name: 复制 .pyd 到 site-packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -lh build-python/bindings/ElaWidgetTools*.pyd
+          cp build-python/bindings/ElaWidgetTools*.pyd "${PY_SITE}/"
+          ls -lh "${PY_SITE}"/ElaWidgetTools*.pyd
+
+      - name: 冒烟测试 (import)
+        shell: bash
+        run: |
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          "$PYTHON" -c "import PySide6.QtWidgets; import ElaWidgetTools; print('ElaWidgetTools:', ElaWidgetTools.__file__)"
+
+      - name: PyInstaller 打包
+        shell: bash
+        run: |
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          cd PySide6Example
+          "$PYTHON" -m PyInstaller \
+            --noconfirm \
+            --windowed \
+            --name "ElaWidgetToolsDemo" \
+            --hidden-import ElaWidgetTools \
+            --add-data "mainwindow.py;." \
+            --add-data "ExamplePage;ExamplePage" \
+            --add-data "ModelView;ModelView" \
+            main.py
+          ls -lh dist/
+
+      - name: 打包 dist 为 zip
+        shell: bash
+        run: |
+          cd PySide6Example/dist
+          zip -r -y "../../../ElaWidgetToolsDemo-windows.zip" "ElaWidgetToolsDemo"
+          cd ../../..
+          ls -lh ElaWidgetToolsDemo-windows.zip
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElaWidgetToolsDemo-windows
+          path: ElaWidgetToolsDemo-windows.zip
+          retention-days: 30
+
+  release:
+    name: 发布到 GitHub Release
+    needs: [build-macos-client, build-windows-client]
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - name: 下载 artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 整理产物
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp artifacts/ElaWidgetToolsDemo-macos/*.zip dist/
+          cp artifacts/ElaWidgetToolsDemo-windows/*.zip dist/
+          ls -lh dist/
+
+      - name: 用日期生成 tag 并清理同日旧 release
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="client-v$(date -u +%Y.%m.%d)"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "存在同日 release $tag，删除以重建"
+            gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: 创建 Release 并上传产物
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            自动构建客户端应用 — 提交 `${{ github.sha }}`
+
+            平台：macOS 15 + Windows (win64_msvc2022_64)
+            Python：3.10
+            PySide6：${{ env.PYSIDE6_VERSION }}
+            Qt：${{ env.QT_VERSION }}
+
+            ## 使用方法
+            - macOS：解压 `ElaWidgetToolsDemo-macos.zip`，双击 `ElaWidgetToolsDemo.app` 运行
+            - Windows：解压 `ElaWidgetToolsDemo-windows.zip`，双击 `ElaWidgetToolsDemo\ElaWidgetToolsDemo.exe` 运行
+
+            注意：macOS 上首次运行可能需要在「系统设置 → 隐私与安全性」中允许打开；
+            Windows 上可能被 SmartScreen 拦截，选择「仍要运行」即可。
+          fail_on_unmatched_files: true
+          files: dist/*.zip
