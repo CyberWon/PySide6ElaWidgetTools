@@ -266,12 +266,10 @@ jobs:
           ls -lh dist/
 
       - name: 打包 dist 为 zip
-        shell: bash
+        shell: powershell
         run: |
-          cd PySide6Example/dist
-          zip -r -y "../../../ElaWidgetToolsDemo-windows.zip" "ElaWidgetToolsDemo"
-          cd ../../..
-          ls -lh ElaWidgetToolsDemo-windows.zip
+          Compress-Archive -Path "PySide6Example\dist\ElaWidgetToolsDemo" -DestinationPath "ElaWidgetToolsDemo-windows.zip" -Force
+          Get-Item ElaWidgetToolsDemo-windows.zip | Format-List Name,Length
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
