@@ -60,6 +60,9 @@ class MainWindow(ElaWindow):
 
         # 拦截默认关闭事件
         closeDialog = ElaContentDialog(self)
+        closeDialog.setLeftButtonText("取消")
+        closeDialog.setMiddleButtonText("最小化")
+        closeDialog.setRightButtonText("退出")
         closeDialog.rightButtonClicked.connect(self.close)
         closeDialog.middleButtonClicked.connect(
             lambda: (closeDialog.close(), self.showMinimized())
