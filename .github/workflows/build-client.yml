@@ -235,19 +235,25 @@ jobs:
             -DBUILD_PYTHON_BINDINGS=ON
           cmake --build build-python --target ElaWidgetToolsPython --parallel
 
-      - name: 复制 .pyd 到 site-packages
+      - name: 复制 .pyd 与依赖 DLL 到 site-packages
         shell: bash
         run: |
           set -euo pipefail
           ls -lh build-python/bindings/ElaWidgetTools*.pyd
           cp build-python/bindings/ElaWidgetTools*.pyd "${PY_SITE}/"
-          ls -lh "${PY_SITE}"/ElaWidgetTools*.pyd
+          # .pyd 直接链接 PySide6/shiboken6 自带的 DLL，而这些 DLL 在
+          # site-packages 的子目录中，Windows 加载 .pyd 时不会去子目录搜索。
+          # 把它们一并复制到 site-packages 根目录，确保 import 即用。
+          cp "${PYSIDE6_DIR}"/pyside6.abi3.dll "${PY_SITE}/"
+          cp "${PYSIDE6_DIR}"/Qt6Core.dll "${PYSIDE6_DIR}"/Qt6Gui.dll "${PYSIDE6_DIR}"/Qt6Widgets.dll "${PY_SITE}/"
+          cp "${SHIBOKEN_DIR}"/shiboken6.abi3.dll "${PY_SITE}/"
+          ls -lh "${PY_SITE}"/ElaWidgetTools*.pyd "${PY_SITE}"/pyside6.abi3.dll "${PY_SITE}"/shiboken6.abi3.dll
 
-      - name: 冒烟测试 (import)
+      - name: 冒烟测试 (直接 import)
         shell: bash
         run: |
           PYTHON="${{ steps.py.outputs.python-path }}"
-          "$PYTHON" -c "import PySide6.QtWidgets; import ElaWidgetTools; print('ElaWidgetTools:', ElaWidgetTools.__file__)"
+          "$PYTHON" -c "import ElaWidgetTools; print('ElaWidgetTools:', ElaWidgetTools.__file__)"
 
       - name: PyInstaller 打包
         shell: bash

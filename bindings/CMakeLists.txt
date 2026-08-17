@@ -181,4 +181,25 @@ execute_process(
 install(
     TARGETS ${BINDINGS_MODULE_TARGET}
     LIBRARY DESTINATION ${Python3_SITEPACKAGES}
+    RUNTIME DESTINATION ${Python3_SITEPACKAGES}
 )
+
+# On Windows the extension links directly against the DLLs bundled with
+# PySide6/shiboken6 (pyside6.abi3.dll, shiboken6.abi3.dll and the
+# Qt6Core/Gui/Widgets DLLs). Those DLLs live in the *subdirectories*
+# site-packages/PySide6 and site-packages/shiboken6; when Python loads a
+# .pyd, Windows only searches the directory that contains the .pyd itself
+# (site-packages), not its subdirectories. Without them the import fails with
+# "ImportError: DLL load failed ... 找不到指定的模块".
+# Copy the required DLLs next to the .pyd so `import ElaWidgetTools` works
+# directly, without requiring `import PySide6` first.
+if(WIN32)
+    install(FILES
+        "${Python3_SITEPACKAGES}/PySide6/pyside6.abi3.dll"
+        "${Python3_SITEPACKAGES}/PySide6/Qt6Core.dll"
+        "${Python3_SITEPACKAGES}/PySide6/Qt6Gui.dll"
+        "${Python3_SITEPACKAGES}/PySide6/Qt6Widgets.dll"
+        "${Python3_SITEPACKAGES}/shiboken6/shiboken6.abi3.dll"
+        DESTINATION ${Python3_SITEPACKAGES}
+    )
+endif()

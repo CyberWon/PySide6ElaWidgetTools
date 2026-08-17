@@ -125,25 +125,32 @@ jobs:
           echo --- CMake build ---
           cmake --build build-python --target ElaWidgetToolsPython --parallel
 
-      - name: 复制 .pyd 到 site-packages
+      - name: 复制 .pyd 与依赖 DLL 到 site-packages
         shell: bash
         run: |
           set -euo pipefail
           echo "--- 查找构建产物 ---"
           ls -lh build-python/bindings/ElaWidgetTools*.pyd
-          echo "--- 复制到 site-packages ---"
+          echo "--- 复制 .pyd 到 site-packages ---"
           cp build-python/bindings/ElaWidgetTools*.pyd "${PY_SITE}/"
+          # .pyd 直接链接 PySide6/shiboken6 自带的 DLL，而这些 DLL 在
+          # site-packages 的子目录中，Windows 加载 .pyd 时不会去子目录搜索。
+          # 把它们一并复制到 site-packages 根目录，确保 import 即用。
+          cp "${PYSIDE6_DIR}"/pyside6.abi3.dll "${PY_SITE}/"
+          cp "${PYSIDE6_DIR}"/Qt6Core.dll "${PYSIDE6_DIR}"/Qt6Gui.dll "${PYSIDE6_DIR}"/Qt6Widgets.dll "${PY_SITE}/"
+          cp "${SHIBOKEN_DIR}"/shiboken6.abi3.dll "${PY_SITE}/"
           echo "--- 验证 ---"
-          ls -lh "${PY_SITE}"/ElaWidgetTools*.pyd
+          ls -lh "${PY_SITE}"/ElaWidgetTools*.pyd "${PY_SITE}"/pyside6.abi3.dll "${PY_SITE}"/shiboken6.abi3.dll
 
-      - name: 冒烟测试 (import)
+      - name: 冒烟测试 (直接 import，不预加载 PySide6)
         shell: bash
         run: |
           PYTHON="${{ steps.py.outputs.python-path }}"
           "$PYTHON" - <<'PY'
           import sys
           sys.path.insert(0, r"${{ env.PY_SITE }}")
-          import PySide6.QtWidgets  # 确保 Qt DLL 路径已注册
+          # 不再先 import PySide6.QtWidgets 注册 DLL 路径，
+          # 直接 import 以验证依赖 DLL 复制是否生效。
           import ElaWidgetTools as E
           print("ElaWidgetTools loaded:", E.__file__)
           for name in ["ElaWindow","ElaMessageBar","ElaIconType","ElaNavigationRouter"]:
@@ -151,12 +158,15 @@ jobs:
           print("smoke test passed")
           PY
 
-      - name: 打包 .pyd 到 dist/
+      - name: 打包 .pyd 与依赖 DLL 到 dist/
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
           cp "${PY_SITE}"/ElaWidgetTools*.pyd dist/
+          cp "${PY_SITE}"/pyside6.abi3.dll dist/
+          cp "${PY_SITE}"/Qt6Core.dll "${PY_SITE}"/Qt6Gui.dll "${PY_SITE}"/Qt6Widgets.dll dist/
+          cp "${PY_SITE}"/shiboken6.abi3.dll dist/
           ls -lh dist/
 
       - name: 上传构建产物
@@ -221,7 +231,6 @@ jobs:
             PySide6：${{ env.PYSIDE6_VERSION }}
             Qt：${{ env.QT_VERSION }}
 
-            将对应 Python 版本的 zip 解压后把 `ElaWidgetTools.*.pyd` 放入对应 Python 的 site-packages 即可 `import ElaWidgetTools`。
-            Windows 上需确保先 `import PySide6` 再 `import ElaWidgetTools`（或 PySide6 已在搜索路径中）。
+             将对应 Python 版本的 zip 解压后把 `ElaWidgetTools.*.pyd` 及其依赖 DLL（`pyside6.abi3.dll`、`shiboken6.abi3.dll`、`Qt6Core.dll`、`Qt6Gui.dll`、`Qt6Widgets.dll`）一并放入对应 Python 的 site-packages 即可 `import ElaWidgetTools`。Windows 上 `.pyd` 直接链接这些 DLL，必须全部放入 site-packages 根目录（与 `.pyd` 同级）。
           fail_on_unmatched_files: true
           files: dist/*.zip
