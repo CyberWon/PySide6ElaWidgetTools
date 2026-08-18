@@ -15,9 +15,9 @@
     </namespace-type>
 
     <namespace-type name="ElaAppBarType">
-        <enum-type name="ButtonType"/>
+        <enum-type name="ButtonType" flags="ButtonFlags"/>
         <enum-type name="CustomArea"/>
-        <enum-type name="WMMouseActionType"/>
+        <enum-type name="WMMouseActionType" flags="WMMouseActionTypes"/>
     </namespace-type>
 
     <namespace-type name="ElaTextType">
@@ -33,6 +33,10 @@
     <namespace-type name="ElaNavigationRouterType">
         <enum-type name="NavigationRouteType"/>
         <enum-type name="RouteMode"/>
+    </namespace-type>
+
+    <namespace-type name="ElaRouterType">
+        <enum-type name="NavigationResult"/>
     </namespace-type>
 
     <namespace-type name="ElaEventBusType">
@@ -73,6 +77,13 @@
     <namespace-type name="ElaIconType">
         <enum-type name="IconName"/>
     </namespace-type>
+
+    <!-- ElaRouteConfig 含 std::function 成员，shiboken6 无法为结构体成员的
+         std::function 生成转换代码，移除 factory 字段以避免生成失败；
+         Python 侧懒加载工厂请改用 addPageNode / addDynamicRoute 替代流程。 -->
+    <value-type name="ElaRouteConfig">
+        <modify-field name="factory" remove="yes"/>
+    </value-type>
 
     <!-- Components -->
     <object-type name="ElaAcrylicUrlCard">
@@ -489,6 +500,10 @@
 
     <object-type name="ElaSuggestBox">
         <modify-function signature="ElaSuggestBox(ElaSuggestBoxPrivate&amp;,ElaSuggestBox*)" remove="all"/>
+        <!-- ElaSuggestBox::SuggestData 是嵌套 value-type；shiboken 需要显式声明
+             才能为 QList<ElaSuggestBox::SuggestData>（如 ElaWindow::getNavigationSuggestDataList
+             的返回类型）生成容器转换代码。 -->
+        <value-type name="SuggestData"/>
     </object-type>
 
     <object-type name="ElaTabBar">

@@ -247,6 +247,21 @@ cmake --build build --target ElaWidgetTools
 # 详细步骤参考 bindings/ 目录
 ```
 
+### Python 绑定已知限制
+
+- **`ElaRouter` 回调守卫 API**：`beforeEach` / `afterEach` / `setRouteBeforeEnter` 的
+  参数是 `std::function` 回调（`ElaRouteGuard` / `ElaRouteAfterHook`），shiboken6 无法
+  为 `std::function` 生成转换代码，因此这三个方法在 Python 侧不可用。其余核心路由
+  API（`addRoute` / `addRoutes` / `addDynamicRoute` / `push` / `replace` / `back` /
+  `forward` / `removeRoute` 等）均已绑定。路由跳转拦截请改用
+  `ElaWindow.addPageNode` 提前注册页面 + `ElaWindow.navigation(key)` 方式实现；
+  懒加载工厂（`ElaRouteConfig.factory`）在 Python 侧亦不可用，请按需创建页面后再
+  注册。
+- **`ElaWindow` 导航节点 out 参数**：`addExpanderNode` / `addFooterNode` /
+  `addCategoryNode` 的节点 key 通过 `QString&` out 参数回传。绑定生成阶段已通过
+  `bindings/fix_out_params.py` 自动改写，Python 侧调用约定为传 `""` 占位并解包
+  `_, key = addExpanderNode(...)`，返回 `(NodeResult, key)` 二元组。
+
 完整示例见 [PySide6Example/](PySide6Example/) 目录。
 
 ## 致谢

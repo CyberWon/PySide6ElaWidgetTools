@@ -73,6 +73,7 @@ ENUM_NAMESPACES = [
     ("ElaTextType", ["TextStyle"]),
     ("ElaNavigationType", ["NodeResult", "NavigationDisplayMode", "NavigationNodeType"]),
     ("ElaNavigationRouterType", ["NavigationRouteType", "RouteMode"]),
+    ("ElaRouterType", ["NavigationResult"]),
     ("ElaEventBusType", ["EventBusReturnType"]),
     ("ElaCardPixType", ["PixMode"]),
     ("ElaGraphicsSceneType", ["SceneMode"]),
@@ -83,6 +84,14 @@ ENUM_NAMESPACES = [
     ("ElaSheetPanelType", ["Direction", "DetentLevel"]),
     ("ElaIconType", ["IconName"]),
 ]
+
+# enum -> QFlags 包装类型（对应 C++ 侧 Q_DECLARE_FLAGS(Flags, Enum)）。
+# shiboken 需要 flags 属性才会为枚举生成 QFlags 类型，
+# 否则 setWindowButtonFlags(ElaAppBarType::ButtonFlags) 等复数重载不可用。
+ENUM_FLAGS_MAP = {
+    ("ElaAppBarType", "ButtonType"): "ButtonFlags",
+    ("ElaAppBarType", "WMMouseActionType"): "WMMouseActionTypes",
+}
 
 
 def parse_header(filepath):
@@ -156,9 +165,21 @@ def generate_typesystem(classes):
     for ns_name, enums in ENUM_NAMESPACES:
         lines.append(f'    <namespace-type name="{ns_name}">')
         for enum in enums:
-            lines.append(f'        <enum-type name="{enum}"/>')
+            flags = ENUM_FLAGS_MAP.get((ns_name, enum))
+            if flags:
+                lines.append(f'        <enum-type name="{enum}" flags="{flags}"/>')
+            else:
+                lines.append(f'        <enum-type name="{enum}"/>')
         lines.append(f"    </namespace-type>")
         lines.append("")
+
+    # ElaRouteConfig 含 std::function 成员，shiboken6 无法为结构体成员的
+    # std::function 生成转换代码，移除 factory 字段避免生成失败；
+    # Python 侧懒加载工厂请改用 addPageNode/addDynamicRoute 替代流程。
+    lines.append("    <value-type name=\"ElaRouteConfig\">")
+    lines.append('        <modify-field name="factory" remove="yes"/>')
+    lines.append("    </value-type>")
+    lines.append("")
 
     lines.append("    <!-- Components -->")
     for cls in sorted(classes, key=lambda c: c["class_name"]):
@@ -191,6 +212,11 @@ def generate_typesystem(classes):
             )
         for enum in cls["inner_enums"]:
             lines.append(f'        <enum-type name="{enum}"/>')
+        # ElaSuggestBox::SuggestData 是嵌套 value-type；shiboken 需要显式声明
+        # 才能为 QList<ElaSuggestBox::SuggestData>（如 ElaWindow::getNavigationSuggestDataList
+        # 的返回类型）生成容器转换代码。
+        if cn == "ElaSuggestBox":
+            lines.append(f'        <value-type name="SuggestData"/>')
         lines.append(f"    </object-type>")
         lines.append("")
 
