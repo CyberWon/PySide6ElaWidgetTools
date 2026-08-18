@@ -47,8 +47,9 @@ endforeach()
 
 # 顶层 value-type 的 wrapper 以类型名小写命名（如 ElaRouteConfig -> elarouteconfig_wrapper.cpp），
 # 需同样加入编译源，否则 module wrapper 引用的 init_<Type> 符号无法解析（LNK2019）。
+# 注意：CMake 正则不支持 {n} 量词，缩进须用字面空格表示。
 file(STRINGS ${TYPESYSTEM_FILE} TYPESYSTEM_TOP_VALUE_TYPE_LINES
-    REGEX "^ {4}<value-type name=\"[^\"]+\""
+    REGEX "^    <value-type name=\"[^\"]+\""
 )
 foreach(TYPE_LINE IN LISTS TYPESYSTEM_TOP_VALUE_TYPE_LINES)
     string(REGEX REPLACE ".*name=\"([^\"]+)\".*" "\\1" TYPE_NAME "${TYPE_LINE}")
