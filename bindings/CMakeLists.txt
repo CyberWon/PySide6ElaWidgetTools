@@ -45,6 +45,26 @@ foreach(TYPE_LINE IN LISTS TYPESYSTEM_TYPE_LINES)
     )
 endforeach()
 
+# 顶层 value-type 的 wrapper 以类型名小写命名（如 ElaRouteConfig -> elarouteconfig_wrapper.cpp），
+# 需同样加入编译源，否则 module wrapper 引用的 init_<Type> 符号无法解析（LNK2019）。
+file(STRINGS ${TYPESYSTEM_FILE} TYPESYSTEM_TOP_VALUE_TYPE_LINES
+    REGEX "^ {4}<value-type name=\"[^\"]+\""
+)
+foreach(TYPE_LINE IN LISTS TYPESYSTEM_TOP_VALUE_TYPE_LINES)
+    string(REGEX REPLACE ".*name=\"([^\"]+)\".*" "\\1" TYPE_NAME "${TYPE_LINE}")
+    string(TOLOWER "${TYPE_NAME}" TYPE_WRAPPER_NAME)
+    list(APPEND GENERATED_SOURCES
+        ${GENERATED_SOURCES_DIR}/${TYPE_WRAPPER_NAME}_wrapper.cpp
+    )
+endforeach()
+
+# 嵌套 value-type 的 wrapper 命名规则为 外层类名_内层名（小写），
+# 如 ElaSuggestBox::SuggestData -> elasuggestbox_suggestdata_wrapper.cpp，
+# 无法用简单正则从 typesystem 行推导，显式列出。
+list(APPEND GENERATED_SOURCES
+    ${GENERATED_SOURCES_DIR}/elasuggestbox_suggestdata_wrapper.cpp
+)
+
 # ElaScreenCaptureManager 类定义在 #ifdef Q_OS_MAC 内，
 # 非 macOS 平台 shiboken 不会生成其 wrapper，需从源文件列表中移除，
 # 否则 AUTOMOC 因找不到该文件而报错。
