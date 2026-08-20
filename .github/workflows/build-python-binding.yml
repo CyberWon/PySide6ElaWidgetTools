@@ -1,5 +1,5 @@
 # 在 macOS 上构建 ElaWidgetTools 的 PySide6 6.10.3 Python 绑定
-# 产出可直接 `import ElaWidgetTools` 的 .so 模块，打包为 zip artifact 供下载
+# 矩阵构建 Python 3.10 / 3.12，产出可直接 `import ElaWidgetTools` 的 .so 模块，打包为 zip artifact 供下载
 
 name: Build Python Binding (macOS)
 
@@ -23,7 +23,6 @@ on:
 env:
   QT_VERSION: 6.10.3
   PYSIDE6_VERSION: 6.10.3
-  PYTHON_VERSION: "3.10"
   BUILD_TYPE: Release
 
 concurrency:
@@ -32,8 +31,12 @@ concurrency:
 
 jobs:
   build-macos:
-    name: macOS / Python 3.10 / PySide6 6.10.3
+    name: macOS / Python ${{ matrix.python-version }} / PySide6 6.10.3
     runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
 
     steps:
       - name: Checkout 源码
@@ -41,10 +44,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: 用 conda 安装 Python ${{ env.PYTHON_VERSION }}
+      - name: 用 conda 安装 Python ${{ matrix.python-version }}
         uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ matrix.python-version }}
           miniforge-variant: Miniforge3
           use-mamba: true
           channels: conda-forge
@@ -181,7 +184,7 @@ jobs:
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: ElaWidgetTools-macos-py${{ env.PYTHON_VERSION }}-pyside${{ env.PYSIDE6_VERSION }}
+          name: ElaWidgetTools-macos-py${{ matrix.python-version }}-pyside${{ env.PYSIDE6_VERSION }}
           path: dist/*
           retention-days: 30
           if-no-files-found: error
@@ -236,7 +239,7 @@ jobs:
             自动构建 Python 绑定 — 提交 `${{ github.sha }}`
 
             平台：macOS 15 (clang_64)
-            Python：${{ env.PYTHON_VERSION }}
+            Python：3.10 / 3.12
             PySide6：${{ env.PYSIDE6_VERSION }}
             Qt：${{ env.QT_VERSION }}
 
