@@ -171,13 +171,38 @@ jobs:
           print("smoke test passed")
           PY
 
+      - name: 生成 .pyi 类型桩
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          PY_SITE="${{ steps.env.outputs.py_site }}"
+          SO=$(ls "$PY_SITE"/ElaWidgetTools*.so | head -n1)
+          echo "generate type stub for: $SO"
+          python - "$SO" "$PY_SITE" <<'PY'
+          import sys
+          so, outdir = sys.argv[1], sys.argv[2]
+          sys.argv = ["genpyi", so, "--outpath", outdir]
+          import PySide6
+          import PySide6.QtWidgets
+          import PySide6.QtCore
+          import PySide6.QtGui
+          import shiboken6
+          import shibokensupport.signature.lib.pyi_generator as gen
+          gen.PySide6 = PySide6
+          from shibokensupport.signature.lib.pyi_generator import main
+          main()
+          PY
+          echo "--- generated pyi ---"
+          ls -la "$PY_SITE"/ElaWidgetTools*.pyi
+
       - name: 打包 .so + .pyi 到 dist/
         shell: bash -el {0}
         run: |
           set -euo pipefail
           mkdir -p dist
-          # 主 .so 模块
+          # 主 .so 模块 + 类型桩
           cp "${{ steps.env.outputs.py_site }}/ElaWidgetTools"*.so dist/
+          cp "${{ steps.env.outputs.py_site }}/ElaWidgetTools"*.pyi dist/
           # 列出产物
           ls -lh dist/
 
@@ -244,5 +269,6 @@ jobs:
             Qt：${{ env.QT_VERSION }}
 
             将 zip 解压后把 `ElaWidgetTools.*.so` 放入对应 Python 的 site-packages 即可 `import ElaWidgetTools`。
+            同目录下的 `ElaWidgetTools.pyi` 为类型桩，一并放入可获得 IDE 类型提示。
           fail_on_unmatched_files: true
           files: dist/*.zip
