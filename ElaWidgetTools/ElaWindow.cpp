@@ -189,6 +189,25 @@ int ElaWindow::getAppBarHeight() const
     return d->_appBar->getAppBarHeight();
 }
 
+void ElaWindow::setAppBarVisible(bool isVisible)
+{
+    Q_D(ElaWindow);
+    d->_appBar->setAppBarVisible(isVisible);
+    Q_EMIT pAppBarVisibleChanged();
+}
+
+bool ElaWindow::getAppBarVisible() const
+{
+    Q_D(const ElaWindow);
+    return d->_appBar->getAppBarVisible();
+}
+
+ElaAppBar* ElaWindow::getAppBar() const
+{
+    Q_D(const ElaWindow);
+    return d->_appBar;
+}
+
 void ElaWindow::setCustomWidget(ElaAppBarType::CustomArea customArea, QWidget *widget, QObject *hitTestObject, const QString& hitTestFunctionName)
 {
     Q_D(ElaWindow);

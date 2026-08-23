@@ -1,4 +1,4 @@
-﻿#ifndef ELAWINDOW_H
+#ifndef ELAWINDOW_H
 #define ELAWINDOW_H
 
 #include <QMainWindow>
@@ -15,6 +15,7 @@ class ELA_EXPORT ElaWindow : public QMainWindow
     Q_PROPERTY_CREATE_Q_H(bool, IsFixedSize)
     Q_PROPERTY_CREATE_Q_H(bool, IsDefaultClosed)
     Q_PROPERTY_CREATE_Q_H(int, AppBarHeight)
+    Q_PROPERTY_CREATE_Q_H(bool, AppBarVisible)
     Q_PROPERTY_CREATE_Q_H(int, ThemeChangeTime)
     Q_PROPERTY_CREATE_Q_H(bool, IsCentralStackedWidgetTransparent)
     Q_PROPERTY_CREATE_Q_H(bool, IsAllowPageOpenInNewWindow)
@@ -39,6 +40,8 @@ public:
 
     void setCustomMenu(QMenu* customMenu);
     QMenu* getCustomMenu() const;
+
+    ElaAppBar* getAppBar() const;
 
     void setUserInfoCardVisible(bool isVisible);
     void setUserInfoCardPixmap(QPixmap pix);

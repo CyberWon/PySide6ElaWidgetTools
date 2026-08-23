@@ -43,6 +43,7 @@ ElaAppBar::ElaAppBar(QWidget* parent)
     d->_pIsFixedSize = false;
     d->_pIsDefaultClosed = true;
     d->_pIsOnlyAllowMinAndClose = false;
+    d->_pAppBarVisible = true;
     d->_pCustomMenu = nullptr;
     window()->installEventFilter(this);
 #ifdef Q_OS_WIN
@@ -244,6 +245,34 @@ int ElaAppBar::getAppBarHeight() const
 {
     Q_D(const ElaAppBar);
     return d->_pAppBarHeight;
+}
+
+void ElaAppBar::setAppBarVisible(bool isVisible)
+{
+    Q_D(ElaAppBar);
+    if (d->_pAppBarVisible == isVisible)
+    {
+        return;
+    }
+    d->_pAppBarVisible = isVisible;
+    setVisible(isVisible);
+    if (isVisible)
+    {
+        setFixedHeight(d->_pAppBarHeight);
+        window()->setContentsMargins(0, this->height(), 0, 0);
+    }
+    else
+    {
+        setFixedHeight(0);
+        window()->setContentsMargins(0, 0, 0, 0);
+    }
+    Q_EMIT pAppBarVisibleChanged();
+}
+
+bool ElaAppBar::getAppBarVisible() const
+{
+    Q_D(const ElaAppBar);
+    return d->_pAppBarVisible;
 }
 
 void ElaAppBar::setCustomWidget(ElaAppBarType::CustomArea customArea, QWidget* widget, QObject* hitTestObject, const QString& hitTestFunctionName)

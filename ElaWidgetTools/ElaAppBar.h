@@ -58,6 +58,7 @@ class ELA_EXPORT ElaAppBar : public QWidget
     Q_PROPERTY_CREATE_Q_H(bool, IsDefaultClosed)
     Q_PROPERTY_CREATE_Q_H(bool, IsOnlyAllowMinAndClose)
     Q_PROPERTY_CREATE_Q_H(int, AppBarHeight)
+    Q_PROPERTY_CREATE_Q_H(bool, AppBarVisible)
 public:
     explicit ElaAppBar(QWidget* parent = nullptr);
     ~ElaAppBar() override;

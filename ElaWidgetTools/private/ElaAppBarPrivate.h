@@ -21,6 +21,7 @@ class ElaAppBarPrivate : public QObject
     Q_PROPERTY_CREATE_D(bool, IsDefaultClosed)
     Q_PROPERTY_CREATE_D(bool, IsOnlyAllowMinAndClose)
     Q_PROPERTY_CREATE_D(int, AppBarHeight)
+    Q_PROPERTY_CREATE_D(bool, AppBarVisible)
     Q_PRIVATE_CREATE_D(QMenu*, CustomMenu)
 public:
     explicit ElaAppBarPrivate(QObject* parent = nullptr);
