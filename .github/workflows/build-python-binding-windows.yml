@@ -158,12 +158,39 @@ jobs:
           print("smoke test passed")
           PY
 
+      - name: 生成 .pyi 类型桩
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY_SITE="${{ env.PY_SITE }}"
+          PYTHON="${{ steps.py.outputs.python-path }}"
+          PYD=$(ls "$PY_SITE"/ElaWidgetTools*.pyd | head -n1)
+          echo "generate type stub for: $PYD"
+          "$PYTHON" - "$PYD" "$PY_SITE" <<'PY'
+          import sys
+          pyd, outdir = sys.argv[1], sys.argv[2]
+          sys.path.insert(0, outdir)
+          sys.argv = ["genpyi", pyd, "--outpath", outdir]
+          import PySide6
+          import PySide6.QtWidgets
+          import PySide6.QtCore
+          import PySide6.QtGui
+          import shiboken6
+          import shibokensupport.signature.lib.pyi_generator as gen
+          gen.PySide6 = PySide6
+          from shibokensupport.signature.lib.pyi_generator import main
+          main()
+          PY
+          echo "--- generated pyi ---"
+          ls -la "$PY_SITE"/ElaWidgetTools*.pyi
+
       - name: 打包 .pyd 与依赖 DLL 到 dist/
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
           cp "${PY_SITE}"/ElaWidgetTools*.pyd dist/
+          cp "${PY_SITE}"/ElaWidgetTools*.pyi dist/
           cp "${PY_SITE}"/pyside6.abi3.dll dist/
           cp "${PY_SITE}"/Qt6Core.dll "${PY_SITE}"/Qt6Gui.dll "${PY_SITE}"/Qt6Widgets.dll dist/
           cp "${PY_SITE}"/shiboken6.abi3.dll dist/
@@ -231,6 +258,6 @@ jobs:
             PySide6：${{ env.PYSIDE6_VERSION }}
             Qt：${{ env.QT_VERSION }}
 
-             将对应 Python 版本的 zip 解压后把 `ElaWidgetTools.*.pyd` 及其依赖 DLL（`pyside6.abi3.dll`、`shiboken6.abi3.dll`、`Qt6Core.dll`、`Qt6Gui.dll`、`Qt6Widgets.dll`）一并放入对应 Python 的 site-packages 即可 `import ElaWidgetTools`。Windows 上 `.pyd` 直接链接这些 DLL，必须全部放入 site-packages 根目录（与 `.pyd` 同级）。
+             将对应 Python 版本的 zip 解压后把 `ElaWidgetTools.*.pyd` 及其依赖 DLL（`pyside6.abi3.dll`、`shiboken6.abi3.dll`、`Qt6Core.dll`、`Qt6Gui.dll`、`Qt6Widgets.dll`）一并放入对应 Python 的 site-packages 即可 `import ElaWidgetTools`。Windows 上 `.pyd` 直接链接这些 DLL，必须全部放入 site-packages 根目录（与 `.pyd` 同级）。同目录下的 `ElaWidgetTools.pyi` 为类型桩，一并放入可获得 IDE 类型提示。
           fail_on_unmatched_files: true
           files: dist/*.zip
