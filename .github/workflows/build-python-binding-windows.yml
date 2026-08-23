@@ -166,7 +166,10 @@ jobs:
           PYTHON="${{ steps.py.outputs.python-path }}"
           PYD=$(ls "$PY_SITE"/ElaWidgetTools*.pyd | head -n1)
           echo "generate type stub for: $PYD"
-          "$PYTHON" - "$PYD" "$PY_SITE" <<'PY'
+          # shiboken6 的 pyi_generator 在 Windows 上解析本模块的巨型枚举
+          # （如 ElaIconType 共 3280 项）时会抛 UnicodeDecodeError（win 专属，
+          # macOS 正常）。此处尽力而为：失败记录警告但不阻断构建。
+          if "$PYTHON" - "$PYD" "$PY_SITE" <<'PY'
           import sys
           pyd, outdir = sys.argv[1], sys.argv[2]
           sys.path.insert(0, outdir)
@@ -181,8 +184,12 @@ jobs:
           from shibokensupport.signature.lib.pyi_generator import main
           main()
           PY
-          echo "--- generated pyi ---"
-          ls -la "$PY_SITE"/ElaWidgetTools*.pyi
+          then
+            echo "--- generated pyi ---"
+            ls -la "$PY_SITE"/ElaWidgetTools*.pyi
+          else
+            echo "::warning:: shiboken pyi generation failed on Windows (UnicodeDecodeError in enum_sig); artifact will ship without .pyi"
+          fi
 
       - name: 打包 .pyd 与依赖 DLL 到 dist/
         shell: bash
@@ -190,10 +197,11 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           cp "${PY_SITE}"/ElaWidgetTools*.pyd dist/
-          cp "${PY_SITE}"/ElaWidgetTools*.pyi dist/
           cp "${PY_SITE}"/pyside6.abi3.dll dist/
           cp "${PY_SITE}"/Qt6Core.dll "${PY_SITE}"/Qt6Gui.dll "${PY_SITE}"/Qt6Widgets.dll dist/
           cp "${PY_SITE}"/shiboken6.abi3.dll dist/
+          # 类型桩（若生成成功则一并带上）
+          cp "${PY_SITE}"/ElaWidgetTools*.pyi dist/ 2>/dev/null || true
           ls -lh dist/
 
       - name: 上传构建产物
