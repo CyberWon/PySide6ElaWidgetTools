@@ -255,8 +255,16 @@ jobs:
         run: |
           set -euo pipefail
           cp build-python/bindings/ElaWidgetTools*.pyd "${{ steps.env.outputs.py_site }}/"
+          PYSIDE6_DIR="${{ steps.env.outputs.pyside6_dir }}"
+          SHIBOKEN_DIR="${{ steps.env.outputs.shiboken_dir }}"
+          cp "$PYSIDE6_DIR/pyside6.abi3.dll" "${{ steps.env.outputs.py_site }}/"
+          cp "$PYSIDE6_DIR/Qt6Core.dll" \
+             "$PYSIDE6_DIR/Qt6Gui.dll" \
+             "$PYSIDE6_DIR/Qt6Widgets.dll" \
+             "${{ steps.env.outputs.py_site }}/"
+          cp "$SHIBOKEN_DIR/shiboken6.abi3.dll" "${{ steps.env.outputs.py_site }}/"
 
-      - name: Smoke test without copying DLLs
+      - name: Smoke test installed binding
         shell: bash
         run: |
           PYTHON="${{ steps.python.outputs.python-path }}"
@@ -273,12 +281,19 @@ jobs:
           PYTHON="${{ steps.python.outputs.python-path }}"
           EXTENSION=$(find "${{ steps.env.outputs.py_site }}" -maxdepth 1 -name 'ElaWidgetTools*.pyd' -print -quit)
           PYTHON_TAG="cp$(echo '${{ matrix.python-version }}' | tr -d '.')"
+          PYSIDE6_DIR="${{ steps.env.outputs.pyside6_dir }}"
+          SHIBOKEN_DIR="${{ steps.env.outputs.shiboken_dir }}"
           "$PYTHON" scripts/build_pypi_wheel.py \
             --extension "$EXTENSION" \
             --version "${{ needs.prepare.outputs.version }}" \
             --python-tag "$PYTHON_TAG" \
             --abi-tag "$PYTHON_TAG" \
             --platform-tag win_amd64 \
+            --extra-file "$PYSIDE6_DIR/pyside6.abi3.dll" \
+            --extra-file "$PYSIDE6_DIR/Qt6Core.dll" \
+            --extra-file "$PYSIDE6_DIR/Qt6Gui.dll" \
+            --extra-file "$PYSIDE6_DIR/Qt6Widgets.dll" \
+            --extra-file "$SHIBOKEN_DIR/shiboken6.abi3.dll" \
             --output-dir dist
 
       - uses: actions/upload-artifact@v4

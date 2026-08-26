@@ -60,6 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--python-tag", required=True)
     parser.add_argument("--abi-tag", required=True)
     parser.add_argument("--platform-tag", required=True)
+    parser.add_argument("--extra-file", action="append", default=[], type=Path)
     parser.add_argument("--output-dir", type=Path, default=Path("dist"))
     return parser.parse_args()
 
@@ -72,6 +73,9 @@ def main() -> int:
         raise FileNotFoundError(f"Type stub not found: {args.pyi}")
     if not args.extension.name.startswith("ElaWidgetTools."):
         raise ValueError(f"Unexpected native extension name: {args.extension.name}")
+    for extra_file in args.extra_file:
+        if not extra_file.is_file():
+            raise FileNotFoundError(f"Extra wheel file not found: {extra_file}")
 
     readme_path = ROOT / "README.md"
     license_path = ROOT / "LICENSE"
@@ -87,6 +91,8 @@ def main() -> int:
     package_dir = staging / "ElaWidgetTools"
     package_dir.mkdir(parents=True)
     shutil.copy2(args.extension, staging / args.extension.name)
+    for extra_file in args.extra_file:
+        shutil.copy2(extra_file, staging / extra_file.name)
 
     init_source = ROOT / "packaging" / "ElaWidgetTools" / "__init__.py"
     init_text = init_source.read_text(encoding="utf-8")
