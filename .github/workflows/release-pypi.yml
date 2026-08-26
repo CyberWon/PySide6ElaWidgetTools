@@ -1,0 +1,316 @@
+name: Release PyPI
+
+on:
+  push:
+    tags:
+      - "pypi-v*"
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: "PyPI package version (for example: 2.0.0)"
+        required: true
+        default: "2.0.0"
+      publish:
+        description: "Publish after successful builds"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pypi-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  QT_VERSION: 6.10.3
+  PYSIDE6_VERSION: 6.10.3
+  BUILD_TYPE: Release
+  MACOSX_DEPLOYMENT_TARGET: "13.0"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Resolve package version
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.package_version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            version="${GITHUB_REF_NAME#pypi-v}"
+          else
+            version="$INPUT_VERSION"
+          fi
+
+          pattern='^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?(\.post[1-9][0-9]*)?(\.dev[1-9][0-9]*)?$'
+          if [[ ! "$version" =~ $pattern ]]; then
+            echo "Invalid package version: $version" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build-macos:
+    name: Wheels / macOS / Python ${{ matrix.python-version }}
+    runs-on: macos-15
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          miniforge-variant: Miniforge3
+          use-mamba: true
+          channels: conda-forge
+          channel-priority: strict
+          auto-activate-base: true
+
+      - name: Install Python build dependencies
+        shell: bash -el {0}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "PySide6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6_generator==${{ env.PYSIDE6_VERSION }}" \
+            wheel
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: clang_64
+          host: mac
+          target: desktop
+          cache: true
+          cache-key-prefix: qt-${{ env.QT_VERSION }}-clang_64-pypi
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Prepare build paths
+        id: env
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          PY_SITE=$(python -c "import site; print(site.getsitepackages()[0])")
+          SHIBOKEN_DIR=$(python -c "import shiboken6,os; print(os.path.dirname(shiboken6.__file__))")
+          PYSIDE6_DIR=$(python -c "import PySide6,os; print(os.path.dirname(PySide6.__file__))")
+          echo "py_site=$PY_SITE" >> "$GITHUB_OUTPUT"
+          echo "shiboken_dir=$SHIBOKEN_DIR" >> "$GITHUB_OUTPUT"
+          echo "pyside6_dir=$PYSIDE6_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Patch generated glue path
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          PYSIDE6_GLUE_DIR="${{ steps.env.outputs.pyside6_dir }}/glue"
+          sed -i.bak "s|/Users/cyber/miniconda3/envs/aidub/lib/python3.10/site-packages/PySide6/glue|$PYSIDE6_GLUE_DIR|g" bindings/bindings.xml
+          rm -f bindings/bindings.xml.bak
+
+      - name: Create Qt include links
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          if [ ! -d "$QT_ROOT_DIR/include/QtCore" ]; then
+            mkdir -p "$QT_ROOT_DIR/include"
+            for framework in QtCore QtGui QtWidgets; do
+              if [ -d "$QT_ROOT_DIR/lib/${framework}.framework/Headers" ]; then
+                ln -sf "$QT_ROOT_DIR/lib/${framework}.framework/Headers" "$QT_ROOT_DIR/include/${framework}"
+              fi
+            done
+          fi
+
+      - name: Build binding
+        shell: bash -el {0}
+        run: |
+          cmake -S . -B build-python \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
+            -DPython3_EXECUTABLE="$(which python)" \
+            -DShiboken6_DIR="${{ steps.env.outputs.shiboken_dir }}/lib/cmake/Shiboken6" \
+            -DPySide6_DIR="${{ steps.env.outputs.pyside6_dir }}/lib/cmake/PySide6" \
+            -DBUILD_PYTHON_BINDINGS=ON
+          cmake --build build-python --target ElaWidgetToolsPython --parallel
+          cmake --install build-python
+
+      - name: Smoke test
+        shell: bash -el {0}
+        run: |
+          QT_QPA_PLATFORM=offscreen python - <<'PY'
+          import ElaWidgetTools as e
+          assert hasattr(e, "ElaWindow")
+          assert hasattr(e, "ElaIconType")
+          print("ElaWidgetTools:", e.__file__)
+          PY
+
+      - name: Build wheel
+        shell: bash -el {0}
+        run: |
+          extension=$(find "${{ steps.env.outputs.py_site }}" -maxdepth 1 -name 'ElaWidgetTools*.so' -print -quit)
+          python scripts/build_pypi_wheel.py \
+            --extension "$extension" \
+            --version "${{ needs.prepare.outputs.version }}" \
+            --python-tag "cp${{ matrix.python-version == '3.10' && '310' || '312' }}" \
+            --abi-tag "cp${{ matrix.python-version == '3.10' && '310' || '312' }}" \
+            --platform-tag "macosx_13_0_arm64" \
+            --output-dir dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-macos-${{ matrix.python-version }}
+          path: dist/*.whl
+          retention-days: 7
+          if-no-files-found: error
+
+  build-windows:
+    name: Wheels / Windows / Python ${{ matrix.python-version }}
+    runs-on: windows-latest
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        id: python
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python build dependencies
+        shell: bash
+        run: |
+          PYTHON="${{ steps.python.outputs.python-path }}"
+          "$PYTHON" -m pip install --upgrade pip
+          "$PYTHON" -m pip install \
+            "PySide6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6==${{ env.PYSIDE6_VERSION }}" \
+            "shiboken6_generator==${{ env.PYSIDE6_VERSION }}" \
+            wheel
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          host: windows
+          target: desktop
+          cache: true
+          cache-key-prefix: qt-${{ env.QT_VERSION }}-win64_msvc2022_64-pypi
+
+      - name: Prepare build paths
+        id: env
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON="${{ steps.python.outputs.python-path }}"
+          PY_SITE=$("$PYTHON" -c "import site; print(site.getsitepackages()[0])")
+          SHIBOKEN_DIR=$("$PYTHON" -c "import shiboken6,os; print(os.path.dirname(shiboken6.__file__))")
+          PYSIDE6_DIR=$("$PYTHON" -c "import PySide6,os; print(os.path.dirname(PySide6.__file__))")
+          echo "py_site=$PY_SITE" >> "$GITHUB_OUTPUT"
+          echo "shiboken_dir=$SHIBOKEN_DIR" >> "$GITHUB_OUTPUT"
+          echo "pyside6_dir=$PYSIDE6_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Patch generated glue path
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYSIDE6_GLUE_DIR="${{ steps.env.outputs.pyside6_dir }}/glue"
+          PYSIDE6_GLUE_DIR_FWD=$(echo "$PYSIDE6_GLUE_DIR" | sed 's|\\|/|g')
+          sed -i "s|/Users/cyber/miniconda3/envs/aidub/lib/python3.10/site-packages/PySide6/glue|$PYSIDE6_GLUE_DIR_FWD|g" bindings/bindings.xml
+
+      - name: Build binding
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS_PATH=%%i
+          call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+          cmake -S . -B build-python -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ^
+            -DCMAKE_PREFIX_PATH="%QT_ROOT_DIR%" ^
+            -DPython3_EXECUTABLE="${{ steps.python.outputs.python-path }}" ^
+            -DShiboken6_DIR="${{ steps.env.outputs.shiboken_dir }}/lib/cmake/Shiboken6" ^
+            -DPySide6_DIR="${{ steps.env.outputs.pyside6_dir }}/lib/cmake/PySide6" ^
+            -DBUILD_PYTHON_BINDINGS=ON
+          cmake --build build-python --target ElaWidgetToolsPython --parallel
+
+      - name: Install binding into site-packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp build-python/bindings/ElaWidgetTools*.pyd "${{ steps.env.outputs.py_site }}/"
+
+      - name: Smoke test without copying DLLs
+        shell: bash
+        run: |
+          PYTHON="${{ steps.python.outputs.python-path }}"
+          "$PYTHON" - <<'PY'
+          import ElaWidgetTools as e
+          assert hasattr(e, "ElaWindow")
+          assert hasattr(e, "ElaIconType")
+          print("ElaWidgetTools:", e.__file__)
+          PY
+
+      - name: Build wheel
+        shell: bash
+        run: |
+          PYTHON="${{ steps.python.outputs.python-path }}"
+          EXTENSION=$(find "${{ steps.env.outputs.py_site }}" -maxdepth 1 -name 'ElaWidgetTools*.pyd' -print -quit)
+          PYTHON_TAG="cp$(echo '${{ matrix.python-version }}' | tr -d '.')"
+          "$PYTHON" scripts/build_pypi_wheel.py \
+            --extension "$EXTENSION" \
+            --version "${{ needs.prepare.outputs.version }}" \
+            --python-tag "$PYTHON_TAG" \
+            --abi-tag "$PYTHON_TAG" \
+            --platform-tag win_amd64 \
+            --output-dir dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-windows-${{ matrix.python-version }}
+          path: dist/*.whl
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [prepare, build-macos, build-windows]
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: wheel-*
+          merge-multiple: true
+
+      - name: Check distributions
+        run: |
+          set -euo pipefail
+          ls -lh dist
+          python -m pip install --upgrade twine
+          python -m twine check --strict dist/*
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

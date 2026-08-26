@@ -227,6 +227,14 @@ python3 scripts/generate_docs.py
 
 本项目提供基于 Shiboken6 的 PySide6 绑定基础设施，支持在 Python 中使用所有组件。
 
+发布后的 wheel 可通过 PyPI 安装：
+
+```bash
+pip install ElaWidgetTools
+```
+
+当前发布流程覆盖 macOS（Python 3.10/3.12）和 Windows（Python 3.9-3.12）。发布与首次配置步骤见 [RELEASING.md](RELEASING.md)。
+
 ### 前置依赖
 
 ```bash
