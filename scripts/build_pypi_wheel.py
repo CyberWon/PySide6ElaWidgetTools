@@ -17,8 +17,13 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Warehouse rejects uploads whose wheel filename carries an unnormalized
+# project name, so every dist artifact uses this PEP 503 form (the importable
+# package itself stays "ElaWidgetTools").
+DIST_NAME = "elawidgettools"
+
 METADATA_TEMPLATE = """Metadata-Version: 2.1
-Name: ElaWidgetTools
+Name: elawidgettools
 Version: {version}
 Summary: Fluent UI widgets for PySide6 / Qt Widgets
 Author: CyberWon
@@ -101,7 +106,7 @@ def main() -> int:
     (package_dir / "__init__.pyi").write_bytes(args.pyi.read_bytes())
     (package_dir / "py.typed").write_text("", encoding="utf-8")
 
-    dist_info = staging / f"ElaWidgetTools-{args.version}.dist-info"
+    dist_info = staging / f"{DIST_NAME}-{args.version}.dist-info"
     dist_info.mkdir()
     metadata = METADATA_TEMPLATE.format(version=args.version).encode("utf-8")
     metadata += readme_path.read_bytes()
