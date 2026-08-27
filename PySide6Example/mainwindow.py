@@ -38,6 +38,10 @@ from ExamplePage.T_Graphics import T_Graphics
 from ExamplePage.T_CodeEditor import T_CodeEditor
 from ExamplePage.T_NewComponents import T_NewComponents
 from ExamplePage.T_NewComponents2 import T_NewComponents2
+from ExamplePage.T_ExpansionComponents import T_ExpansionComponents
+from ExamplePage.T_ExpansionComponents2 import T_ExpansionComponents2
+from ExamplePage.T_ExpansionViews import T_ExpansionViews
+from ExamplePage.T_ExpansionStructures import T_ExpansionStructures
 from ExamplePage.T_Router import T_Router
 from ExamplePage.T_Setting import T_Setting
 from ExamplePage.T_About import T_About
@@ -328,6 +332,10 @@ class MainWindow(ElaWindow):
         self._treeViewPage = T_TreeView(self)
         self._newComponentsPage = T_NewComponents(self)
         self._newComponents2Page = T_NewComponents2(self)
+        self._expansionComponentsPage = T_ExpansionComponents(self)
+        self._expansionComponents2Page = T_ExpansionComponents2(self)
+        self._expansionViewsPage = T_ExpansionViews(self)
+        self._expansionStructuresPage = T_ExpansionStructures(self)
         self._codeEditorPage = T_CodeEditor(self)
         self._routerPage = T_Router(self)
         self._settingPage = T_Setting(self)
@@ -399,6 +407,26 @@ class MainWindow(ElaWindow):
             "ElaNewComponents2",
             self._newComponents2Page,
             ElaIconType.IconName.StarChristmas,
+        )
+        self.addPageNode(
+            "ElaExpansion",
+            self._expansionComponentsPage,
+            ElaIconType.IconName.PuzzlePieceSimple,
+        )
+        self.addPageNode(
+            "ElaPopup2",
+            self._expansionComponents2Page,
+            ElaIconType.IconName.RocketLaunch,
+        )
+        self.addPageNode(
+            "ElaAdvanced",
+            self._expansionViewsPage,
+            ElaIconType.IconName.BoxesPacking,
+        )
+        self.addPageNode(
+            "ElaWizard",
+            self._expansionStructuresPage,
+            ElaIconType.IconName.WandMagicSparkles,
         )
         self.addPageNode(
             "ElaCodeEditor", self._codeEditorPage, ElaIconType.IconName.Code

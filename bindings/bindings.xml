@@ -145,6 +145,7 @@
 
     <object-type name="ElaCommandBar">
         <modify-function signature="ElaCommandBar(ElaCommandBarPrivate&amp;,ElaCommandBar*)" remove="all"/>
+        <value-type name="CommandItem"/>
     </object-type>
 
     <object-type name="ElaContentDialog">
@@ -327,6 +328,7 @@
 
     <object-type name="ElaNotificationCenter">
         <modify-function signature="ElaNotificationCenter(ElaNotificationCenterPrivate&amp;,ElaNotificationCenter*)" remove="all"/>
+        <value-type name="NotificationItem"/>
     </object-type>
 
     <object-type name="ElaNumberBox">
@@ -548,6 +550,7 @@
 
     <object-type name="ElaTimeline">
         <modify-function signature="ElaTimeline(ElaTimelinePrivate&amp;,ElaTimeline*)" remove="all"/>
+        <value-type name="TimelineItem"/>
     </object-type>
 
     <object-type name="ElaToast">

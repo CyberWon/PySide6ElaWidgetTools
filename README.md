@@ -1,5 +1,52 @@
 # ElaWidgetTools
 
+> **Fluent Design UI component library for Qt Widgets and PySide6.**
+> Build modern cross-platform desktop apps with 100+ widgets, light/dark themes,
+> frameless navigation, routing and rich application interactions.
+
+[![PyPI](https://img.shields.io/badge/PyPI-ElaWidgetTools-3776AB)](https://pypi.org/project/ElaWidgetTools/)
+[![Python](https://img.shields.io/badge/Python-3.9%20--%203.12-3776AB)](https://pypi.org/project/ElaWidgetTools/)
+[![Qt Widgets](https://img.shields.io/badge/C%2B%2B-Qt%20Widgets-41CD52)](#简介)
+[![License](https://img.shields.io/badge/License-MIT-61C263)](LICENSE)
+
+## 核心特性
+
+- **100+ 现成组件**：按钮、输入、卡片、数据展示、导航布局、弹出交互和编辑器等常用桌面控件。
+- **C++ 与 Python 双入口**：原生 Qt Widgets 库可直接用于 C++，并通过 Shiboken6 提供可安装的 PySide6 绑定。
+- **现代化桌面框架**：无边框窗口、侧边导航、面包屑、声明式路由、事件总线和停靠面板。
+- **Fluent Design 视觉体系**：Light/Dark 主题、Mica/Acrylic 材质、动效反馈和高 DPI 支持。
+- **跨平台支持**：覆盖 Windows、Ubuntu/Kylin 和 macOS 桌面应用场景。
+
+## 快速开始
+
+### 使用 Python / PySide6
+
+```bash
+pip install --upgrade ElaWidgetTools
+
+git clone https://github.com/CyberWon/PySide6ElaWidgetTools.git
+cd PySide6ElaWidgetTools
+python PySide6Example/main.py
+```
+
+Wheel 会自动声明并依赖运行所需的 PySide6。如需从源码构建绑定，请参考下文的
+[PySide6 绑定](#pyside6-绑定)。
+
+### 构建 C++ 示例
+
+```bash
+git clone https://github.com/CyberWon/PySide6ElaWidgetTools.git
+cd PySide6ElaWidgetTools
+
+cmake -B build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="/path/to/Qt/6.x/<platform-kit>"
+cmake --build build --config Release --target ElaWidgetToolsExample
+```
+
+将 `<platform-kit>` 替换为本机的 Qt Kit 目录，例如 Windows 的
+`msvc2022_64`、Linux 的 `gcc_64` 或 macOS 的 `macos`。构建产物位于
+`build/ElaWidgetToolsExample/`。
+
 ## 简介
 
 本项目基于 [Liniyous/ElaWidgetTools](https://github.com/Liniyous/ElaWidgetTools) 独立修改发展而来。
@@ -25,10 +72,10 @@
 ## 主界面预览
 
 <div align=center>
-  <img src="doc/preview/ElaWidgetTools_Light.png">
+  <img src="doc/preview/ElaWidgetTools_Light.png" alt="ElaWidgetTools light-theme application window with navigation and component examples">
 </div>
 <div align=center>
-  <img src="doc/preview/ElaWidgetTools_Dark.png">
+  <img src="doc/preview/ElaWidgetTools_Dark.png" alt="ElaWidgetTools dark-theme application window with navigation and component examples">
 </div>
 
 ## 支持的组件

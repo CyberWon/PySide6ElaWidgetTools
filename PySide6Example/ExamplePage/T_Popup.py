@@ -1,4 +1,3 @@
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 
 from ElaWidgetTools import (
@@ -7,7 +6,6 @@ from ElaWidgetTools import (
     ElaMessageDialog,
     ElaInputDialog,
     ElaFlyout,
-    ElaToolTip,
     ElaScrollPageArea,
     ElaText,
 )
@@ -32,6 +30,31 @@ class T_Popup(T_BasePage):
         dialogLayout.addWidget(ElaText("ElaContentDialog", self))
         dialogLayout.addWidget(dialogBtn)
         dialogLayout.addStretch()
+
+        # ElaFlyout 用法：showFlyout(anchor) 自动定位到触发按钮附近，
+        # setContentWidget 可以承载评分、表单等任意 QWidget 内容。
+        # 实现：默认 IsLightDismiss，点击弹出框外部时关闭并发出 closed 信号。
+        flyout = ElaFlyout(self)
+        flyout.setTitle("提示")
+        flyout.setContent("点击外部即可自动关闭。")
+        flyoutButton = ElaPushButton("Flyout", self)
+        flyoutButton.clicked.connect(lambda: flyout.showFlyout(flyoutButton))
+        flyoutContent = QWidget(self)
+        flyoutContentLayout = QVBoxLayout(flyoutContent)
+        flyoutContentLayout.setContentsMargins(0, 0, 0, 0)
+        flyoutContentLayout.addWidget(ElaText("自定义内容", 13, self))
+        customFlyout = ElaFlyout(self)
+        customFlyout.setContentWidget(flyoutContent)
+        customFlyoutButton = ElaPushButton("Custom Flyout", self)
+        customFlyoutButton.clicked.connect(
+            lambda: customFlyout.showFlyout(customFlyoutButton)
+        )
+        flyoutArea = ElaScrollPageArea(self)
+        flyoutLayout = QHBoxLayout(flyoutArea)
+        flyoutLayout.addWidget(ElaText("ElaFlyout", self))
+        flyoutLayout.addWidget(flyoutButton)
+        flyoutLayout.addWidget(customFlyoutButton)
+        flyoutLayout.addStretch()
 
         msgDialogBtn = ElaPushButton("MessageDialog", self)
         msgDialogBtn.setFixedSize(140, 38)
@@ -65,6 +88,7 @@ class T_Popup(T_BasePage):
         centralWidget.setWindowTitle("ElaPopup")
         centerLayout = QVBoxLayout(centralWidget)
         centerLayout.addWidget(dialogArea)
+        centerLayout.addWidget(flyoutArea)
         centerLayout.addWidget(msgDialogArea)
         centerLayout.addWidget(inputDialogArea)
         centerLayout.addStretch()

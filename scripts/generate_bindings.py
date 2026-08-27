@@ -8,6 +8,8 @@ Usage:
 
 import os
 import re
+import sysconfig
+from pathlib import Path
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -173,9 +175,11 @@ def generate_typesystem(classes):
         lines.append(f"    </namespace-type>")
         lines.append("")
 
-    # ElaRouteConfig 含 std::function 成员，shiboken6 无法为结构体成员的
-    # std::function 生成转换代码，移除 factory 字段避免生成失败；
-    # Python 侧懒加载工厂请改用 addPageNode/addDynamicRoute 替代流程。
+    lines.extend([
+        "    <!-- ElaRouteConfig 含 std::function 成员，shiboken6 无法为结构体成员的",
+        "         std::function 生成转换代码，移除 factory 字段以避免生成失败；",
+        "         Python 侧懒加载工厂请改用 addPageNode / addDynamicRoute 替代流程。 -->",
+    ])
     lines.append("    <value-type name=\"ElaRouteConfig\">")
     lines.append('        <modify-field name="factory" remove="yes"/>')
     lines.append("    </value-type>")
@@ -210,13 +214,39 @@ def generate_typesystem(classes):
             lines.append(
                 f'        <modify-function signature="{cn}({cn}Private&amp;,{cn}*)" remove="all"/>'
             )
+        if cn == "ElaFlowLayout":
+            lines.extend([
+                "        <!-- Provide PySide6's QLayout ownership helpers (addLayoutOwnership / removeLayoutOwnership),",
+                "             which are normally compiled only into PySide6's own QtWidgets module. An external",
+                "             binding that subclasses QLayout needs these definitions emitted into its wrapper. -->",
+            ])
+            qtwidgets_glue = Path(sysconfig.get_paths()["purelib"])
+            glue_file = qtwidgets_glue / "PySide6" / "glue" / "qtwidgets.cpp"
+            lines.append(
+                f'        <inject-code class="native" position="beginning" '
+                f'file="{glue_file}" snippet="qwidget-retrieveobjectname"/>'
+            )
+            lines.append(
+                f'        <inject-code class="native" position="beginning" '
+                f'file="{glue_file}" snippet="qlayout-help-functions"/>'
+            )
         for enum in cls["inner_enums"]:
             lines.append(f'        <enum-type name="{enum}"/>')
-        # ElaSuggestBox::SuggestData 是嵌套 value-type；shiboken 需要显式声明
-        # 才能为 QList<ElaSuggestBox::SuggestData>（如 ElaWindow::getNavigationSuggestDataList
-        # 的返回类型）生成容器转换代码。
+        if cn == "ElaSuggestBox":
+            lines.extend([
+                "        <!-- ElaSuggestBox::SuggestData 是嵌套 value-type；shiboken 需要显式声明",
+                "             才能为 QList<ElaSuggestBox::SuggestData>（如 ElaWindow::getNavigationSuggestDataList",
+                "             的返回类型）生成容器转换代码。 -->",
+            ])
         if cn == "ElaSuggestBox":
             lines.append(f'        <value-type name="SuggestData"/>')
+        nested_value_types = {
+            "ElaCommandBar": "CommandItem",
+            "ElaNotificationCenter": "NotificationItem",
+            "ElaTimeline": "TimelineItem",
+        }
+        if cn in nested_value_types:
+            lines.append(f'        <value-type name="{nested_value_types[cn]}"/>')
         lines.append(f"    </object-type>")
         lines.append("")
 

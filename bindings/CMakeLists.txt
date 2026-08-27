@@ -64,6 +64,9 @@ endforeach()
 # 无法用简单正则从 typesystem 行推导，显式列出。
 list(APPEND GENERATED_SOURCES
     ${GENERATED_SOURCES_DIR}/elasuggestbox_suggestdata_wrapper.cpp
+    ${GENERATED_SOURCES_DIR}/elacommandbar_commanditem_wrapper.cpp
+    ${GENERATED_SOURCES_DIR}/elanotificationcenter_notificationitem_wrapper.cpp
+    ${GENERATED_SOURCES_DIR}/elatimeline_timelineitem_wrapper.cpp
 )
 
 # ElaScreenCaptureManager 类定义在 #ifdef Q_OS_MAC 内，
