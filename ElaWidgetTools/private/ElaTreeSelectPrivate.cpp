@@ -8,6 +8,7 @@
 #include <QScreen>
 #include <QSortFilterProxyModel>
 #include <QStandardItemModel>
+#include <QVariantAnimation>
 
 #include "ElaLineEdit.h"
 #include "ElaTheme.h"
@@ -172,8 +173,8 @@ void ElaTreeSelectPrivate::_showPopup()
 	heightAnimation->setDuration(400);
 	heightAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 
-	QPropertyAnimation *rotateAnimation = new QPropertyAnimation(this, "");
-	connect(rotateAnimation, &QPropertyAnimation::valueChanged, q, [=](const QVariant &value)
+	QVariantAnimation *rotateAnimation = new QVariantAnimation(this);
+	connect(rotateAnimation, &QVariantAnimation::valueChanged, q, [=](const QVariant &value)
 	{
 		_expandIconRotate = value.toReal();
 		if (q->isVisible())
@@ -221,8 +222,8 @@ void ElaTreeSelectPrivate::_hidePopup()
 	heightAnimation->setDuration(300);
 	heightAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 
-	QPropertyAnimation *rotateAnimation = new QPropertyAnimation(this, "");
-	connect(rotateAnimation, &QPropertyAnimation::valueChanged, q, [=](const QVariant &value)
+	QVariantAnimation *rotateAnimation = new QVariantAnimation(this);
+	connect(rotateAnimation, &QVariantAnimation::valueChanged, q, [=](const QVariant &value)
 	{
 		_expandIconRotate = value.toReal();
 		if (q->isVisible())

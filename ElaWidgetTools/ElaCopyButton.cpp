@@ -5,8 +5,8 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
-#include <QPropertyAnimation>
 #include <QTimer>
+#include <QVariantAnimation>
 
 #include "ElaTheme.h"
 #include "private/ElaCopyButtonPrivate.h"
@@ -36,8 +36,8 @@ ElaCopyButton::ElaCopyButton(QWidget *parent) : QPushButton(parent), d_ptr(new E
 	connect(d->_resetTimer, &QTimer::timeout, this, [=]()
 	{
 		d->_isSuccess = false;
-		QPropertyAnimation *fadeAnimation = new QPropertyAnimation(this, "");
-		connect(fadeAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant &value)
+		QVariantAnimation *fadeAnimation = new QVariantAnimation(this);
+		connect(fadeAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant &value)
 		{
 			d->_iconOpacity = value.toReal();
 			if (isVisible())
@@ -121,8 +121,8 @@ void ElaCopyButton::mouseReleaseEvent(QMouseEvent *event)
 		d->_isSuccess = true;
 		d->_resetTimer->start(d->_pSuccessDuration);
 
-		QPropertyAnimation *fadeAnimation = new QPropertyAnimation(this, "");
-		connect(fadeAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant &value)
+		QVariantAnimation *fadeAnimation = new QVariantAnimation(this);
+		connect(fadeAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant &value)
 		{
 			d->_iconOpacity = value.toReal();
 			if (isVisible())
