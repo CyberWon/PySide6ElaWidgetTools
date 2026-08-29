@@ -31,6 +31,8 @@ Q_SIGNALS:
 
 protected:
     virtual void paintEvent(QPaintEvent* event) override;
+    virtual void showEvent(QShowEvent* event) override;
+    virtual void hideEvent(QHideEvent* event) override;
 };
 
 #endif //ELAFRAMEWORK_ELAWIDGETTOOLS_INCLUDE_ELAPROGRESSRING_H_

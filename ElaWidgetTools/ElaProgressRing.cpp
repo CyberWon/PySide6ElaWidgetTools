@@ -34,6 +34,10 @@ ElaProgressRing::ElaProgressRing(QWidget* parent)
 
     d->_busyStartDegAnimation = new QPropertyAnimation(d, "pBusyStartDeg");
     connect(d->_busyStartDegAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     d->_busyStartDegAnimation->setEasingCurve(QEasingCurve::Linear);
@@ -59,6 +63,36 @@ ElaProgressRing::ElaProgressRing(QWidget* parent)
 
 ElaProgressRing::~ElaProgressRing()
 {
+}
+
+void ElaProgressRing::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    Q_D(ElaProgressRing);
+    // 恢复 busy 动画；对未暂停/未运行的动画 resume() 是无害的空操作，不会违反 setIsBusying 语义
+    if (d->_busyStartDegAnimation)
+    {
+        d->_busyStartDegAnimation->resume();
+    }
+    if (d->_busyContentDegAnimation)
+    {
+        d->_busyContentDegAnimation->resume();
+    }
+}
+
+void ElaProgressRing::hideEvent(QHideEvent* event)
+{
+    QWidget::hideEvent(event);
+    Q_D(ElaProgressRing);
+    // 暂停而非停止，保留进度；setIsBusying(false) 的停止语义不受影响
+    if (d->_busyStartDegAnimation)
+    {
+        d->_busyStartDegAnimation->pause();
+    }
+    if (d->_busyContentDegAnimation)
+    {
+        d->_busyContentDegAnimation->pause();
+    }
 }
 
 void ElaProgressRing::setIsBusying(bool isBusying)
