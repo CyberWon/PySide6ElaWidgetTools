@@ -4,7 +4,6 @@
 #include "ElaMessageBar.h"
 #include <QDateTime>
 #include <QDebug>
-#include <QGraphicsOpacityEffect>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPropertyAnimation>

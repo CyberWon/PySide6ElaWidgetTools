@@ -1,7 +1,6 @@
 #include "ElaSplashScreen.h"
 
 #include <QApplication>
-#include <QGraphicsOpacityEffect>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QMouseEvent>
