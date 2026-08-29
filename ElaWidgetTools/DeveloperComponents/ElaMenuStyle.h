@@ -23,6 +23,12 @@ private:
     int _shadowBorderWidth{6};
     ElaThemeType::ThemeMode _themeMode;
     mutable int _iconWidth{0};
+    mutable QRect _hoverRect;
+    mutable QRect _fadeRect;
+    mutable qreal _hoverInRatio{0};
+    mutable qreal _hoverOutRatio{0};
+    mutable bool _firstPaint{true};
+    void _startItemHoverAnimation(bool isFadeIn, const QWidget* widget) const;
 };
 
 #endif // ELAMENUSTYLE_H

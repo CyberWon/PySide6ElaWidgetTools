@@ -3,7 +3,9 @@
 #include <QDebug>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QStyleOption>
+#include <QVariantAnimation>
 
 #include "ElaTheme.h"
 ElaTabBarStyle::ElaTabBarStyle(QStyle* style)
@@ -122,9 +124,37 @@ void ElaTabBarStyle::drawControl(ControlElement element, const QStyleOption* opt
             }
             else
             {
-                if (topt->state.testFlag(QStyle::State_MouseOver))
+                // 悬停过渡（按 tab 区域键控，旧 tab 淡出、新 tab 淡入）
+                bool isHovered = topt->state.testFlag(QStyle::State_MouseOver);
+                QRect hoverRect = topt->rect;
+                if (_firstPaint)
                 {
-                    painter->setBrush(ElaThemeColor(_themeMode, BasicHoverAlpha));
+                    _firstPaint = false;
+                    _hoverRect = isHovered ? hoverRect : QRect();
+                    _hoverInRatio = isHovered ? 1 : 0;
+                }
+                else if (isHovered && hoverRect != _hoverRect)
+                {
+                    _fadeRect = _hoverRect;
+                    if (_fadeRect.isValid())
+                    {
+                        _startTabHoverAnimation(false, widget);
+                    }
+                    _hoverRect = hoverRect;
+                    _startTabHoverAnimation(true, widget);
+                }
+                else if (!isHovered && hoverRect == _hoverRect)
+                {
+                    _fadeRect = _hoverRect;
+                    _hoverRect = QRect();
+                    _startTabHoverAnimation(false, widget);
+                }
+                qreal hoverRatio = hoverRect == _hoverRect ? _hoverInRatio : hoverRect == _fadeRect ? _hoverOutRatio : 0;
+                if (hoverRatio > 0)
+                {
+                    QColor hoverColor = ElaThemeColor(_themeMode, BasicHoverAlpha);
+                    hoverColor.setAlphaF(hoverColor.alphaF() * hoverRatio);
+                    painter->setBrush(hoverColor);
                 }
                 else
                 {
@@ -217,4 +247,29 @@ QRect ElaTabBarStyle::subElementRect(SubElement element, const QStyleOption* opt
     }
     }
     return QProxyStyle::subElementRect(element, option, widget);
+}
+
+void ElaTabBarStyle::_startTabHoverAnimation(bool isFadeIn, const QWidget* widget) const
+{
+    QVariantAnimation* tabAnimation = new QVariantAnimation;
+    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+    connect(tabAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (isFadeIn)
+        {
+            this->_hoverInRatio = value.toReal();
+        }
+        else
+        {
+            this->_hoverOutRatio = value.toReal();
+        }
+        if (widgetGuard)
+        {
+            widgetGuard->update();
+        }
+    });
+    tabAnimation->setDuration(150);
+    tabAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    tabAnimation->setStartValue(isFadeIn ? _hoverInRatio : _hoverOutRatio);
+    tabAnimation->setEndValue(isFadeIn ? 1.0 : 0.0);
+    tabAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }
