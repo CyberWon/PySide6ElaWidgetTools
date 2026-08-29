@@ -2,7 +2,9 @@
 
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QStyleOption>
+#include <QVariantAnimation>
 
 #include "ElaListView.h"
 #include "ElaTheme.h"
@@ -29,6 +31,38 @@ void ElaListViewStyle::drawPrimitive(PrimitiveElement element, const QStyleOptio
         // Item背景
         if (const QStyleOptionViewItem* vopt = qstyleoption_cast<const QStyleOptionViewItem*>(option))
         {
+            // 行悬停过渡（按行键控，旧行淡出、新行淡入）
+            bool isHovered = vopt->state.testFlag(QStyle::State_MouseOver);
+            QPersistentModelIndex rowKey = vopt->index.sibling(vopt->index.row(), 0);
+            if (_firstPaint)
+            {
+                _firstPaint = false;
+                _hoverIndex = isHovered ? rowKey : QPersistentModelIndex();
+                _hoverInRatio = isHovered ? 1 : 0;
+            }
+            else if (rowKey.isValid() && isHovered && rowKey != _hoverIndex)
+            {
+                // 悬停行切换
+                _fadeOutIndex = _hoverIndex;
+                if (_fadeOutIndex.isValid())
+                {
+                    _startRowHoverAnimation(false, widget);
+                }
+                _hoverIndex = rowKey;
+                _startRowHoverAnimation(true, widget);
+            }
+            else if (rowKey.isValid() && !isHovered && rowKey == _hoverIndex)
+            {
+                // 悬停移出行外
+                _fadeOutIndex = _hoverIndex;
+                _hoverIndex = QPersistentModelIndex();
+                _startRowHoverAnimation(false, widget);
+            }
+            qreal hoverRatio = 0;
+            if (rowKey.isValid())
+            {
+                hoverRatio = rowKey == _hoverIndex ? _hoverInRatio : rowKey == _fadeOutIndex ? _hoverOutRatio : 0;
+            }
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing);
             QRect itemRect = vopt->rect;
@@ -37,24 +71,15 @@ void ElaListViewStyle::drawPrimitive(PrimitiveElement element, const QStyleOptio
             path.addRoundedRect(itemRect, 4, 4);
             if (vopt->state & QStyle::State_Selected)
             {
-                if (vopt->state & QStyle::State_MouseOver)
-                {
-                    // 选中时覆盖
-                    painter->fillPath(path, ElaThemeColor(_themeMode, BasicSelectedHoverAlpha));
-                }
-                else
-                {
-                    // 选中
-                    painter->fillPath(path, ElaThemeColor(_themeMode, BasicSelectedAlpha));
-                }
+                // 选中（悬停时覆盖高亮）
+                painter->fillPath(path, elaMixColor(ElaThemeColor(_themeMode, BasicSelectedAlpha), ElaThemeColor(_themeMode, BasicSelectedHoverAlpha), hoverRatio));
             }
-            else
+            else if (hoverRatio > 0)
             {
-                if (vopt->state & QStyle::State_MouseOver)
-                {
-                    // 覆盖时颜色
-                    painter->fillPath(path, ElaThemeColor(_themeMode, BasicHoverAlpha));
-                }
+                // 覆盖时颜色
+                QColor hoverColor = ElaThemeColor(_themeMode, BasicHoverAlpha);
+                hoverColor.setAlphaF(hoverColor.alphaF() * hoverRatio);
+                painter->fillPath(path, hoverColor);
             }
             painter->restore();
         }
@@ -191,4 +216,29 @@ QSize ElaListViewStyle::sizeFromContents(ContentsType type, const QStyleOption* 
     }
     }
     return QProxyStyle::sizeFromContents(type, option, size, widget);
+}
+
+void ElaListViewStyle::_startRowHoverAnimation(bool isFadeIn, const QWidget* widget) const
+{
+    QVariantAnimation* rowAnimation = new QVariantAnimation;
+    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+    connect(rowAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (isFadeIn)
+        {
+            this->_hoverInRatio = value.toReal();
+        }
+        else
+        {
+            this->_hoverOutRatio = value.toReal();
+        }
+        if (widgetGuard)
+        {
+            widgetGuard->update();
+        }
+    });
+    rowAnimation->setDuration(150);
+    rowAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    rowAnimation->setStartValue(isFadeIn ? _hoverInRatio : _hoverOutRatio);
+    rowAnimation->setEndValue(isFadeIn ? 1.0 : 0.0);
+    rowAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }

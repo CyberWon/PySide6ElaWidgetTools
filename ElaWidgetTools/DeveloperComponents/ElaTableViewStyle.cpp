@@ -2,7 +2,9 @@
 
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QStyleOptionViewItem>
+#include <QVariantAnimation>
 
 #include "ElaTableView.h"
 #include "ElaTheme.h"
@@ -35,15 +37,40 @@ void ElaTableViewStyle::drawPrimitive(PrimitiveElement element, const QStyleOpti
             {
                 return;
             }
+            // 行悬停过渡（按行号键控，旧行淡出、新行淡入）
+            int hoverRow = _pCurrentHoverRow;
+            if (hoverRow != _lastHoverRow)
+            {
+                _fadeOutRow = _lastHoverRow;
+                if (_fadeOutRow >= 0)
+                {
+                    _startRowHoverAnimation(false, widget);
+                }
+                _lastHoverRow = hoverRow;
+                if (hoverRow >= 0)
+                {
+                    _startRowHoverAnimation(true, widget);
+                }
+            }
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing);
             QAbstractItemView::SelectionBehavior selectionBehavior = tabView->selectionBehavior();
             if (selectionBehavior == QAbstractItemView::SelectRows)
             {
-                if (vopt->index.row() == _pCurrentHoverRow)
+                if (hoverRow >= 0 && vopt->index.row() == hoverRow)
                 {
                     painter->setPen(Qt::NoPen);
-                    painter->setBrush(ElaThemeColor(_themeMode, BasicHoverAlpha));
+                    QColor hoverColor = ElaThemeColor(_themeMode, BasicHoverAlpha);
+                    hoverColor.setAlphaF(hoverColor.alphaF() * _hoverInRatio);
+                    painter->setBrush(hoverColor);
+                    painter->drawRect(vopt->rect);
+                }
+                else if (vopt->index.row() >= 0 && vopt->index.row() == _fadeOutRow && _hoverOutRatio > 0)
+                {
+                    painter->setPen(Qt::NoPen);
+                    QColor hoverColor = ElaThemeColor(_themeMode, BasicHoverAlpha);
+                    hoverColor.setAlphaF(hoverColor.alphaF() * _hoverOutRatio);
+                    painter->setBrush(hoverColor);
                     painter->drawRect(vopt->rect);
                 }
             }
@@ -98,6 +125,31 @@ void ElaTableViewStyle::drawPrimitive(PrimitiveElement element, const QStyleOpti
     }
     }
     QProxyStyle::drawPrimitive(element, option, painter, widget);
+}
+
+void ElaTableViewStyle::_startRowHoverAnimation(bool isFadeIn, const QWidget* widget) const
+{
+    QVariantAnimation* rowAnimation = new QVariantAnimation;
+    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+    connect(rowAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (isFadeIn)
+        {
+            this->_hoverInRatio = value.toReal();
+        }
+        else
+        {
+            this->_hoverOutRatio = value.toReal();
+        }
+        if (widgetGuard)
+        {
+            widgetGuard->update();
+        }
+    });
+    rowAnimation->setDuration(150);
+    rowAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    rowAnimation->setStartValue(isFadeIn ? _hoverInRatio : _hoverOutRatio);
+    rowAnimation->setEndValue(isFadeIn ? 1.0 : 0.0);
+    rowAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void ElaTableViewStyle::drawControl(ControlElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const

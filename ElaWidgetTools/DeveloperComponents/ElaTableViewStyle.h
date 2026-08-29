@@ -20,6 +20,11 @@ public:
 private:
     ElaThemeType::ThemeMode _themeMode;
     int _horizontalPadding{11};
+    mutable int _lastHoverRow{-1};
+    mutable int _fadeOutRow{-1};
+    mutable qreal _hoverInRatio{0};
+    mutable qreal _hoverOutRatio{0};
+    void _startRowHoverAnimation(bool isFadeIn, const QWidget* widget) const;
 };
 
 #endif // ELATABLEVIEWSTYLE_H
