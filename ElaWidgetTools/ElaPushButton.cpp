@@ -1,7 +1,9 @@
 #include "ElaPushButton.h"
 
+#include <QEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPropertyAnimation>
 
 #include "ElaIcon.h"
 #include "ElaTheme.h"
@@ -26,6 +28,7 @@ ElaPushButton::ElaPushButton(QWidget* parent)
     d->_pDarkHoverColor = ElaThemeColor(ElaThemeType::Dark, BasicHover);
     d->_pLightPressColor = ElaThemeColor(ElaThemeType::Light, BasicPress);
     d->_pDarkPressColor = ElaThemeColor(ElaThemeType::Dark, BasicPress);
+    d->_pHoverAlpha = 0;
     d->_lightTextColor = ElaThemeColor(ElaThemeType::Light, BasicText);
     d->_darkTextColor = ElaThemeColor(ElaThemeType::Dark, BasicText);
     setMouseTracking(true);
@@ -104,6 +107,35 @@ bool ElaPushButton::isHoverEnabled() const
     return d->_isHoverEnabled;
 }
 
+bool ElaPushButton::event(QEvent* event)
+{
+    Q_D(ElaPushButton);
+    switch (event->type())
+    {
+    case QEvent::Enter:
+    case QEvent::Leave:
+    {
+        if (isEnabled() && d->_isHoverEnabled)
+        {
+            QPropertyAnimation* alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
+            connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+                update();
+            });
+            alphaAnimation->setDuration(175);
+            alphaAnimation->setStartValue(d->_pHoverAlpha);
+            alphaAnimation->setEndValue(event->type() == QEvent::Enter ? 255 : 0);
+            alphaAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+        }
+        break;
+    }
+    default:
+    {
+        break;
+    }
+    }
+    return QPushButton::event(event);
+}
+
 void ElaPushButton::mousePressEvent(QMouseEvent* event)
 {
     Q_D(ElaPushButton);
@@ -132,12 +164,12 @@ void ElaPushButton::paintEvent(QPaintEvent* event)
     if (d->_themeMode == ElaThemeType::Light)
     {
         painter.setPen(ElaThemeColor(ElaThemeType::Light, BasicBorder));
-        painter.setBrush(isEnabled() ? d->_isPressed ? d->_pLightPressColor : ((d->_isHoverEnabled && underMouse()) ? d->_pLightHoverColor : d->_pLightDefaultColor) : ElaThemeColor(d->_themeMode, BasicDisable));
+        painter.setBrush(isEnabled() ? d->_isPressed ? d->_pLightPressColor : elaMixColor(d->_pLightDefaultColor, d->_pLightHoverColor, d->_isHoverEnabled ? d->_pHoverAlpha / 255.0 : 0) : ElaThemeColor(d->_themeMode, BasicDisable));
     }
     else
     {
         painter.setPen(Qt::NoPen);
-        painter.setBrush(isEnabled() ? d->_isPressed ? d->_pDarkPressColor : ((d->_isHoverEnabled && underMouse()) ? d->_pDarkHoverColor : d->_pDarkDefaultColor) : ElaThemeColor(d->_themeMode, BasicDisable));
+        painter.setBrush(isEnabled() ? d->_isPressed ? d->_pDarkPressColor : elaMixColor(d->_pDarkDefaultColor, d->_pDarkHoverColor, d->_isHoverEnabled ? d->_pHoverAlpha / 255.0 : 0) : ElaThemeColor(d->_themeMode, BasicDisable));
     }
     painter.drawRoundedRect(foregroundRect, d->_pBorderRadius, d->_pBorderRadius);
     // 底边线绘制

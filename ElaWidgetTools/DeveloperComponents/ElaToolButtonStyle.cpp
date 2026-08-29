@@ -3,7 +3,9 @@
 #include <QDebug>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QStyleOption>
+#include <QVariantAnimation>
 #include <QtMath>
 
 #include "ElaTheme.h"
@@ -64,21 +66,30 @@ void ElaToolButtonStyle::drawComplexControl(ComplexControl control, const QStyle
 						}
 						else
 						{
-							if (bopt->state.testFlag(QStyle::State_MouseOver) || bopt->state.testFlag(QStyle::State_On))
+							// 悬停过渡
+							bool isHovered = bopt->state.testFlag(QStyle::State_MouseOver) || bopt->state.testFlag(QStyle::State_On);
+							if (_firstPaint)
 							{
-								painter->setBrush(_pIsTransparent ? ElaThemeColor(_themeMode, BasicHoverAlpha) : ElaThemeColor(_themeMode, BasicHover));
-								painter->drawRoundedRect(toolButtonRect, _pBorderRadius, _pBorderRadius);
+								_firstPaint = false;
+								_lastHovered = isHovered;
+								_hoverRatio = isHovered ? 1 : 0;
 							}
-							else
+							else if (isHovered != _lastHovered)
 							{
-								if (!_pIsTransparent)
-								{
-									painter->setBrush(ElaThemeColor(_themeMode, BasicBase));
-									painter->drawRoundedRect(toolButtonRect, _pBorderRadius, _pBorderRadius);
-									// 底边线绘制
-									painter->setPen(ElaThemeColor(_themeMode, BasicBaseLine));
-									painter->drawLine(toolButtonRect.x() + _pBorderRadius, toolButtonRect.y() + toolButtonRect.height(), toolButtonRect.x() + toolButtonRect.width() - _pBorderRadius, toolButtonRect.y() + toolButtonRect.height());
-								}
+								_startHoverAnimation(isHovered ? 1 : 0, widget);
+								_lastHovered = isHovered;
+							}
+							QColor hoverColor = _pIsTransparent ? ElaThemeColor(_themeMode, BasicHoverAlpha) : ElaThemeColor(_themeMode, BasicHover);
+							QColor normalColor = _pIsTransparent ? QColor(Qt::transparent) : ElaThemeColor(_themeMode, BasicBase);
+							painter->setBrush(elaMixColor(normalColor, hoverColor, _hoverRatio));
+							painter->drawRoundedRect(toolButtonRect, _pBorderRadius, _pBorderRadius);
+							if (!_pIsTransparent)
+							{
+								// 底边线绘制（随悬停淡出）
+								QColor lineColor = ElaThemeColor(_themeMode, BasicBaseLine);
+								lineColor.setAlphaF(lineColor.alphaF() * (1.0 - _hoverRatio));
+								painter->setPen(lineColor);
+								painter->drawLine(toolButtonRect.x() + _pBorderRadius, toolButtonRect.y() + toolButtonRect.height(), toolButtonRect.x() + toolButtonRect.width() - _pBorderRadius, toolButtonRect.y() + toolButtonRect.height());
 							}
 						}
 					}
@@ -360,4 +371,22 @@ qreal ElaToolButtonStyle::_calculateExpandIndicatorWidth(const QStyleOptionToolB
 	int indicatorWidth = painter->fontMetrics().horizontalAdvance(QChar((unsigned short) ElaIconType::AngleDown));
 	painter->restore();
 	return indicatorWidth;
+}
+
+void ElaToolButtonStyle::_startHoverAnimation(qreal endRatio, const QWidget *widget) const
+{
+	QVariantAnimation *hoverAnimation = new QVariantAnimation;
+	QPointer<QWidget> widgetGuard = const_cast<QWidget *>(widget);
+	connect(hoverAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant &value) {
+		this->_hoverRatio = value.toReal();
+		if (widgetGuard)
+		{
+			widgetGuard->update();
+		}
+	});
+	hoverAnimation->setDuration(150);
+	hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
+	hoverAnimation->setStartValue(_hoverRatio);
+	hoverAnimation->setEndValue(endRatio);
+	hoverAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }

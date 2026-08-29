@@ -1,9 +1,22 @@
 #ifndef ELADEF_H
 #define ELADEF_H
+#include <QColor>
 #include <QObject>
 
 #include "ElaProperty.h"
 #define ElaDefVersion "2.0.2"
+
+// 状态过渡动画取色：在 from、to 之间按 ratio(0~1) 做通道级线性插值
+inline QColor elaMixColor(const QColor& from, const QColor& to, qreal ratio)
+{
+    ratio = qBound<qreal>(0.0, ratio, 1.0);
+    QColor mixed;
+    mixed.setRedF(from.redF() + (to.redF() - from.redF()) * ratio);
+    mixed.setGreenF(from.greenF() + (to.greenF() - from.greenF()) * ratio);
+    mixed.setBlueF(from.blueF() + (to.blueF() - from.blueF()) * ratio);
+    mixed.setAlphaF(from.alphaF() + (to.alphaF() - from.alphaF()) * ratio);
+    return mixed;
+}
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
 #define Q_BEGIN_ENUM_CREATE(CLASS) \

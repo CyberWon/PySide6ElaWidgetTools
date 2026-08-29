@@ -3,7 +3,9 @@
 #include <QDebug>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QStyleOption>
+#include <QVariantAnimation>
 #include <QtMath>
 
 #include "ElaTheme.h"
@@ -35,16 +37,28 @@ void ElaWindowStyle::drawPrimitive(PrimitiveElement element, const QStyleOption*
             if (option->state.testFlag(QStyle::State_Sunken))
             {
                 painter->setBrush(ElaThemeColor(_themeMode, BasicHoverAlpha));
-            }
-            else if (option->state.testFlag(QStyle::State_MouseOver))
-            {
-                painter->setBrush(ElaThemeColor(_themeMode, BasicPressAlpha));
+                painter->drawRect(option->rect);
             }
             else
             {
-                painter->setBrush(Qt::transparent);
+                // 悬停过渡（按 widget 键控）
+                bool isHovered = option->state.testFlag(QStyle::State_MouseOver);
+                const QWidget* targetWidget = qobject_cast<const QWidget*>(option->styleObject ? option->styleObject : widget);
+                if (targetWidget)
+                {
+                    ButtonHoverState& state = _hoverStates[targetWidget];
+                    if (state.hovered != isHovered)
+                    {
+                        _startHoverAnimation(targetWidget, isHovered ? 1 : 0);
+                        state.hovered = isHovered;
+                    }
+                    if (state.ratio > 0)
+                    {
+                        painter->setBrush(elaMixColor(QColor(Qt::transparent), ElaThemeColor(_themeMode, BasicPressAlpha), state.ratio));
+                        painter->drawRect(option->rect);
+                    }
+                }
             }
-            painter->drawRect(option->rect);
             painter->restore();
         }
         return;
@@ -208,4 +222,25 @@ void ElaWindowStyle::drawControl(ControlElement element, const QStyleOption* opt
     }
     }
     QProxyStyle::drawControl(element, option, painter, widget);
+}
+
+void ElaWindowStyle::_startHoverAnimation(const QWidget* targetWidget, qreal endRatio) const
+{
+    QVariantAnimation* hoverAnimation = new QVariantAnimation;
+    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(targetWidget);
+    connect(hoverAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (!widgetGuard)
+        {
+            return;
+        }
+        ButtonHoverState state = _hoverStates.value(widgetGuard.data());
+        state.ratio = value.toReal();
+        _hoverStates[widgetGuard.data()] = state;
+        widgetGuard->update();
+    });
+    hoverAnimation->setDuration(150);
+    hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    hoverAnimation->setStartValue(_hoverStates.value(targetWidget).ratio);
+    hoverAnimation->setEndValue(endRatio);
+    hoverAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }

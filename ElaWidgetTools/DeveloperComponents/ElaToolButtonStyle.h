@@ -23,6 +23,10 @@ private:
     ElaThemeType::ThemeMode _themeMode;
     int _contentMargin{6};
     int _hasMenuIndicatorWidth{30};
+    mutable qreal _hoverRatio{0};
+    mutable bool _lastHovered{false};
+    mutable bool _firstPaint{true};
+    void _startHoverAnimation(qreal endRatio, const QWidget* widget) const;
     void _drawIndicator(QPainter* painter, const QStyleOptionToolButton* bopt, const QWidget* widget) const;
     void _drawIcon(QPainter* painter, QRectF iconRect, const QStyleOptionToolButton* bopt, const QWidget* widget) const;
     void _drawText(QPainter* painter, QRect contentRect, const QStyleOptionToolButton* bopt) const;
