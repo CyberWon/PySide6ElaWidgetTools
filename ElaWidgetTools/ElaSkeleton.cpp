@@ -36,6 +36,10 @@ void ElaSkeletonPrivate::_startShimmerAnimation()
 	_shimmerAnimation->setLoopCount(-1);
 	connect(_shimmerAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant &value)
 	{
+		if (!q->isVisible())
+		{
+			return;
+		}
 		_pShimmerPosition = value.toReal();
 		q->update();
 	});
@@ -75,6 +79,28 @@ ElaSkeleton::~ElaSkeleton()
 {
 	Q_D(ElaSkeleton);
 	d->_stopShimmerAnimation();
+}
+
+void ElaSkeleton::showEvent(QShowEvent* event)
+{
+	QWidget::showEvent(event);
+	Q_D(ElaSkeleton);
+	// 恢复微光动画；对未暂停的动画 resume() 是无害的空操作
+	if (d->_shimmerAnimation)
+	{
+		d->_shimmerAnimation->resume();
+	}
+}
+
+void ElaSkeleton::hideEvent(QHideEvent* event)
+{
+	QWidget::hideEvent(event);
+	Q_D(ElaSkeleton);
+	// 暂停而非停止，保留进度，重新显示时无跳变
+	if (d->_shimmerAnimation)
+	{
+		d->_shimmerAnimation->pause();
+	}
 }
 
 void ElaSkeleton::setSkeletonType(SkeletonType type)
