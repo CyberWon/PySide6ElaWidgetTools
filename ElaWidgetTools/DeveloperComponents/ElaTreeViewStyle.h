@@ -29,8 +29,10 @@ private:
     mutable qreal _hoverOutRatio{0};
     mutable QVariantAnimation* _hoverInAnimation{nullptr};
     mutable QVariantAnimation* _hoverOutAnimation{nullptr};
+    mutable QRect _hoverInRect;
+    mutable QRect _hoverOutRect;
     mutable bool _firstPaint{true};
-    void _startRowHoverAnimation(bool isFadeIn, const QWidget* widget) const;
+    void _startRowHoverAnimation(bool isFadeIn, const QRect& rowRect, const QWidget* widget) const;
 };
 
 #endif // ELATREEVIEWSTYLE_H

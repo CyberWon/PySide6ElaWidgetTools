@@ -21,7 +21,7 @@ private:
     QLinearGradient* _baseGradient{nullptr};
     mutable QStyle::State _lastState{QStyle::State_None};
     mutable qreal _circleRadius{0};
-    void _startRadiusAnimation(qreal startRadius, qreal endRadius, QWidget* widget) const;
+    void _startRadiusAnimation(qreal startRadius, qreal endRadius, const QRect& handleRect, QWidget* widget) const;
 };
 
 #endif // ELACOLORVALUESLIDERSTYLE_H
