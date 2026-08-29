@@ -6,7 +6,6 @@
 #include "ElaDef.h"
 class ElaFlyout;
 class QVBoxLayout;
-class QGraphicsOpacityEffect;
 class ElaFlyoutPrivate : public QObject
 {
     Q_OBJECT
@@ -26,7 +25,6 @@ protected:
 private:
     QVBoxLayout* _mainLayout{nullptr};
     QWidget* _contentWidget{nullptr};
-    QGraphicsOpacityEffect* _opacityEffect{nullptr};
     ElaThemeType::ThemeMode _themeMode;
 #if defined(Q_OS_WIN) && QT_VERSION == QT_VERSION_CHECK(6, 11, 0)
     int _shadowBorderWidth{0};

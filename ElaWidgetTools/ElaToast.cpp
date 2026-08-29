@@ -1,6 +1,5 @@
 #include "ElaToast.h"
 
-#include <QGraphicsOpacityEffect>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPropertyAnimation>
@@ -68,20 +67,18 @@ ElaToast::ElaToast(ToastType type, const QString &text, int displayMsec, QWidget
 	}
 	move(targetPos);
 
-	// Opacity effect and animation
-	QGraphicsOpacityEffect *opacityEffect = new QGraphicsOpacityEffect(this);
-	opacityEffect->setOpacity(0);
-	setGraphicsEffect(opacityEffect);
+	// 顶层窗口直接用窗口透明度做淡入淡出，避免 QGraphicsOpacityEffect 每帧的离屏合成
+	setWindowOpacity(0.0);
 
 	// Fade in
-	QPropertyAnimation *fadeIn = new QPropertyAnimation(opacityEffect, "opacity", this);
+	QPropertyAnimation *fadeIn = new QPropertyAnimation(this, "windowOpacity", this);
 	fadeIn->setDuration(200);
 	fadeIn->setStartValue(0.0);
 	fadeIn->setEndValue(1.0);
 	fadeIn->setEasingCurve(QEasingCurve::OutCubic);
 
 	// Fade out
-	QPropertyAnimation *fadeOut = new QPropertyAnimation(opacityEffect, "opacity", this);
+	QPropertyAnimation *fadeOut = new QPropertyAnimation(this, "windowOpacity", this);
 	fadeOut->setDuration(300);
 	fadeOut->setStartValue(1.0);
 	fadeOut->setEndValue(0.0);

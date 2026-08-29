@@ -1,7 +1,6 @@
 #include "ElaFlyout.h"
 
 #include <QApplication>
-#include <QGraphicsOpacityEffect>
 #include <QPainter>
 #include <QPropertyAnimation>
 #include <QScreen>
@@ -28,9 +27,8 @@ ElaFlyout::ElaFlyout(QWidget *parent)
 	int margin = d->_shadowBorderWidth + 8;
 	d->_mainLayout->setContentsMargins(margin, margin, margin, margin);
 
-	d->_opacityEffect = new QGraphicsOpacityEffect(this);
-	d->_opacityEffect->setOpacity(0);
-	setGraphicsEffect(d->_opacityEffect);
+	// 顶层窗口直接用窗口透明度做淡入，避免 QGraphicsOpacityEffect 每帧的离屏合成
+	setWindowOpacity(0.0);
 
 	d->_themeMode = eTheme->getThemeMode();
 	connect(eTheme, &ElaTheme::themeModeChanged, this, [=](ElaThemeType::ThemeMode themeMode)
@@ -220,7 +218,8 @@ bool ElaFlyoutPrivate::eventFilter(QObject *watched, QEvent *event)
 
 void ElaFlyoutPrivate::_doShowAnimation()
 {
-	QPropertyAnimation *animation = new QPropertyAnimation(_opacityEffect, "opacity");
+	Q_Q(ElaFlyout);
+	QPropertyAnimation *animation = new QPropertyAnimation(q, "windowOpacity");
 	animation->setDuration(250);
 	animation->setStartValue(0.0);
 	animation->setEndValue(1.0);
