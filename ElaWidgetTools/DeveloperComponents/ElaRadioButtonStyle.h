@@ -1,6 +1,7 @@
 #ifndef ELARADIOBUTTONSTYLE_H
 #define ELARADIOBUTTONSTYLE_H
 
+#include <QEasingCurve>
 #include <QProxyStyle>
 
 #include "ElaDef.h"
@@ -15,6 +16,12 @@ public:
 
 private:
     ElaThemeType::ThemeMode _themeMode;
+    mutable qreal _hoverRatio{0};
+    mutable qreal _checkRatio{0};
+    mutable bool _lastHovered{false};
+    mutable bool _lastChecked{false};
+    mutable bool _firstPaint{true};
+    void _startRatioAnimation(qreal* targetRatio, qreal endRatio, int duration, QEasingCurve::Type curve, const QWidget* widget) const;
 };
 
 #endif // ELARADIOBUTTONSTYLE_H
