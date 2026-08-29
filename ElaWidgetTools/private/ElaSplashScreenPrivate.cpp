@@ -1,6 +1,5 @@
 #include "ElaSplashScreenPrivate.h"
 
-#include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 
 #include "ElaSplashScreen.h"
