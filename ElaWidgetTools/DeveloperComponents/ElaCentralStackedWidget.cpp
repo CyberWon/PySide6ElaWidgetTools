@@ -247,8 +247,11 @@ void ElaCentralStackedWidget::doWindowStackSwitch(ElaWindowType::StackSwitchMode
         blurAnimation->setStartValue(40);
         blurAnimation->setEndValue(2);
         blurAnimation->start(QAbstractAnimation::DeleteWhenStopped);
-        QApplication::processEvents();
-        _containerStackedWidget->setCurrentIndex(nodeIndex);
+        // 用零延迟单发定时器代替 processEvents()：保留“先渲染一帧模糊、再切页”的时序，
+        // 同时避免事件重入（重入可能在动画/页面截取进行中重新触发导航）
+        QTimer::singleShot(0, this, [=]() {
+            _containerStackedWidget->setCurrentIndex(nodeIndex);
+        });
         break;
     }
     }
