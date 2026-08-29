@@ -17,6 +17,7 @@ ElaToggleButton::ElaToggleButton(QWidget* parent)
     d->_pBorderRadius = 3;
     d->_themeMode = eTheme->getThemeMode();
     d->_pToggleAlpha = 0;
+    d->_pHoverAlpha = 0;
     setMouseTracking(true);
     setFixedSize(80, 32);
     QFont font = this->font();
@@ -58,11 +59,23 @@ bool ElaToggleButton::getIsToggled() const
 
 bool ElaToggleButton::event(QEvent* event)
 {
+    Q_D(ElaToggleButton);
     switch (event->type())
     {
     case QEvent::Enter:
     case QEvent::Leave:
     {
+        if (isEnabled())
+        {
+            QPropertyAnimation* hoverAnimation = new QPropertyAnimation(d, "pHoverAlpha");
+            connect(hoverAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+                update();
+            });
+            hoverAnimation->setDuration(175);
+            hoverAnimation->setStartValue(d->_pHoverAlpha);
+            hoverAnimation->setEndValue(event->type() == QEvent::Enter ? 255 : 0);
+            hoverAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+        }
         update();
         break;
     }
@@ -123,12 +136,12 @@ void ElaToggleButton::paintEvent(QPaintEvent* event)
         if (d->_isToggled)
         {
             painter.setPen(ElaThemeColor(d->_themeMode, BasicBorder));
-            painter.setBrush(isEnabled() ? d->_isPressed ? ElaThemeColor(d->_themeMode, PrimaryPress) : (underMouse() ? ElaThemeColor(d->_themeMode, PrimaryHover) : ElaThemeColor(d->_themeMode, PrimaryNormal)) : ElaThemeColor(d->_themeMode, BasicDisable));
+            painter.setBrush(isEnabled() ? d->_isPressed ? ElaThemeColor(d->_themeMode, PrimaryPress) : elaMixColor(ElaThemeColor(d->_themeMode, PrimaryNormal), ElaThemeColor(d->_themeMode, PrimaryHover), d->_pHoverAlpha / 255.0) : ElaThemeColor(d->_themeMode, BasicDisable));
         }
         else
         {
             painter.setPen(ElaThemeColor(d->_themeMode, BasicBorder));
-            painter.setBrush(isEnabled() ? d->_isPressed ? ElaThemeColor(d->_themeMode, BasicPress) : (underMouse() ? ElaThemeColor(d->_themeMode, BasicHover) : ElaThemeColor(d->_themeMode, BasicBase)) : ElaThemeColor(d->_themeMode, BasicDisable));
+            painter.setBrush(isEnabled() ? d->_isPressed ? ElaThemeColor(d->_themeMode, BasicPress) : elaMixColor(ElaThemeColor(d->_themeMode, BasicBase), ElaThemeColor(d->_themeMode, BasicHover), d->_pHoverAlpha / 255.0) : ElaThemeColor(d->_themeMode, BasicDisable));
         }
     }
     else

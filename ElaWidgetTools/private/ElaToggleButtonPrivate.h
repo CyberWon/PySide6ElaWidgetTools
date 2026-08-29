@@ -12,6 +12,7 @@ class ElaToggleButtonPrivate : public QObject
     Q_PROPERTY_CREATE_D(int, BorderRadius)
     Q_PROPERTY_CREATE_D(QString, Text)
     Q_PROPERTY_CREATE(int, ToggleAlpha)
+    Q_PROPERTY_CREATE(int, HoverAlpha)
 public:
     explicit ElaToggleButtonPrivate(QObject* parent = nullptr);
     ~ElaToggleButtonPrivate() override;
