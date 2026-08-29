@@ -3,7 +3,9 @@
 #include <QDebug>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QStyleOption>
+#include <QVariantAnimation>
 
 #include "ElaMenu.h"
 #include "ElaTheme.h"
@@ -81,13 +83,39 @@ void ElaMenuStyle::drawControl(ControlElement element, const QStyleOption* optio
                 qreal textLeftSpacing = 8;
                 painter->save();
                 painter->setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
-                //覆盖效果
-                if (mopt->state.testFlag(QStyle::State_Enabled) && (mopt->state.testFlag(QStyle::State_MouseOver) || mopt->state.testFlag(QStyle::State_Selected)))
+                //覆盖效果（悬停过渡，按菜单项区域键控）
+                bool isHovered = mopt->state.testFlag(QStyle::State_Enabled) && (mopt->state.testFlag(QStyle::State_MouseOver) || mopt->state.testFlag(QStyle::State_Selected));
+                if (_firstPaint)
+                {
+                    _firstPaint = false;
+                    _hoverRect = isHovered ? menuRect : QRect();
+                    _hoverInRatio = isHovered ? 1 : 0;
+                }
+                else if (isHovered && menuRect != _hoverRect)
+                {
+                    _fadeRect = _hoverRect;
+                    if (_fadeRect.isValid())
+                    {
+                        _startItemHoverAnimation(false, widget);
+                    }
+                    _hoverRect = menuRect;
+                    _startItemHoverAnimation(true, widget);
+                }
+                else if (!isHovered && menuRect == _hoverRect)
+                {
+                    _fadeRect = _hoverRect;
+                    _hoverRect = QRect();
+                    _startItemHoverAnimation(false, widget);
+                }
+                qreal hoverRatio = menuRect == _hoverRect ? _hoverInRatio : menuRect == _fadeRect ? _hoverOutRatio : 0;
+                if (hoverRatio > 0)
                 {
                     QRect hoverRect = menuRect;
                     hoverRect.adjust(0, 2, 0, -2);
                     painter->setPen(Qt::NoPen);
-                    painter->setBrush(ElaThemeColor(_themeMode, PopupHover));
+                    QColor hoverColor = ElaThemeColor(_themeMode, PopupHover);
+                    hoverColor.setAlphaF(hoverColor.alphaF() * hoverRatio);
+                    painter->setBrush(hoverColor);
                     painter->drawRoundedRect(hoverRect, 5, 5);
                 }
                 //Icon绘制
@@ -244,4 +272,29 @@ QSize ElaMenuStyle::sizeFromContents(ContentsType type, const QStyleOption* opti
     }
     }
     return QProxyStyle::sizeFromContents(type, option, size, widget);
+}
+
+void ElaMenuStyle::_startItemHoverAnimation(bool isFadeIn, const QWidget* widget) const
+{
+    QVariantAnimation* itemAnimation = new QVariantAnimation;
+    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+    connect(itemAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (isFadeIn)
+        {
+            this->_hoverInRatio = value.toReal();
+        }
+        else
+        {
+            this->_hoverOutRatio = value.toReal();
+        }
+        if (widgetGuard)
+        {
+            widgetGuard->update();
+        }
+    });
+    itemAnimation->setDuration(150);
+    itemAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    itemAnimation->setStartValue(isFadeIn ? _hoverInRatio : _hoverOutRatio);
+    itemAnimation->setEndValue(isFadeIn ? 1.0 : 0.0);
+    itemAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }
