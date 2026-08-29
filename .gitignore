@@ -27,6 +27,9 @@ __pycache__/
 /Qt6.10.3/
 /Qt/
 
+# 本地运行脚本（个人用）
+/run_example_local.sh
+
 # 本地资源（体积大，不入库）
 /PySide6Example/Resource/
 /ElaWidgetToolsExample/Resource/
