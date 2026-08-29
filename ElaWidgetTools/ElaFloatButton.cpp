@@ -207,25 +207,13 @@ bool ElaFloatButton::event(QEvent *event)
 		case QEvent::Enter:
 		{
 			d->_isAlphaAnimationFinished = false;
-			QPropertyAnimation *alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
-			connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=]() { if (isVisible()) { update(); } });
-			connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() { d->_isAlphaAnimationFinished = true; });
-			alphaAnimation->setDuration(200);
-			alphaAnimation->setStartValue(d->_pHoverAlpha);
-			alphaAnimation->setEndValue(255);
-			alphaAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+			d->_startHoverAlphaAnimation(255);
 			break;
 		}
 		case QEvent::Leave:
 		{
 			d->_isAlphaAnimationFinished = false;
-			QPropertyAnimation *alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
-			connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=]() { if (isVisible()) { update(); } });
-			connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() { d->_isAlphaAnimationFinished = true; });
-			alphaAnimation->setDuration(200);
-			alphaAnimation->setStartValue(d->_pHoverAlpha);
-			alphaAnimation->setEndValue(0);
-			alphaAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+			d->_startHoverAlphaAnimation(0);
 			break;
 		}
 		default:
@@ -241,6 +229,22 @@ ElaFloatButtonPrivate::ElaFloatButtonPrivate(QObject *parent)
 
 ElaFloatButtonPrivate::~ElaFloatButtonPrivate()
 {
+}
+
+void ElaFloatButtonPrivate::_startHoverAlphaAnimation(qreal endValue)
+{
+	Q_Q(ElaFloatButton);
+	if (!_hoverAlphaAnimation)
+	{
+		_hoverAlphaAnimation = new QPropertyAnimation(this, "pHoverAlpha", q);
+		connect(_hoverAlphaAnimation, &QPropertyAnimation::valueChanged, q, [=]() { if (q->isVisible()) { q->update(); } });
+		connect(_hoverAlphaAnimation, &QPropertyAnimation::finished, q, [=]() { _isAlphaAnimationFinished = true; });
+	}
+	_hoverAlphaAnimation->stop();
+	_hoverAlphaAnimation->setDuration(200);
+	_hoverAlphaAnimation->setStartValue(_pHoverAlpha);
+	_hoverAlphaAnimation->setEndValue(endValue);
+	_hoverAlphaAnimation->start();
 }
 
 void ElaFloatButtonPrivate::updatePosition()

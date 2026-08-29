@@ -5,6 +5,7 @@
 
 #include "ElaDef.h"
 
+class QVariantAnimation;
 class ElaMenuStyle : public QProxyStyle
 {
     Q_OBJECT
@@ -27,6 +28,8 @@ private:
     mutable QRect _fadeRect;
     mutable qreal _hoverInRatio{0};
     mutable qreal _hoverOutRatio{0};
+    mutable QVariantAnimation* _hoverInAnimation{nullptr};
+    mutable QVariantAnimation* _hoverOutAnimation{nullptr};
     mutable bool _firstPaint{true};
     void _startItemHoverAnimation(bool isFadeIn, const QWidget* widget) const;
 };

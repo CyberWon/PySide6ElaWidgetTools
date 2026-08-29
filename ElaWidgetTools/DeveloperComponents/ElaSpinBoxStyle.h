@@ -4,6 +4,7 @@
 #include <QProxyStyle>
 
 #include "ElaDef.h"
+class QVariantAnimation;
 class ElaSpinBoxStyle : public QProxyStyle
 {
     Q_OBJECT
@@ -17,6 +18,7 @@ public:
 private:
     ElaThemeType::ThemeMode _themeMode;
     mutable qreal _hoverRatio{0};
+    mutable QVariantAnimation* _hoverAnimation{nullptr};
     mutable bool _lastHovered{false};
     mutable bool _firstPaint{true};
     void _startHoverAnimation(qreal endRatio, const QWidget* widget) const;

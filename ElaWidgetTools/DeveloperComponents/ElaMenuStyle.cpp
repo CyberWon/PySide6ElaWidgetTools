@@ -276,25 +276,30 @@ QSize ElaMenuStyle::sizeFromContents(ContentsType type, const QStyleOption* opti
 
 void ElaMenuStyle::_startItemHoverAnimation(bool isFadeIn, const QWidget* widget) const
 {
-    QVariantAnimation* itemAnimation = new QVariantAnimation;
-    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
-    connect(itemAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
-        if (isFadeIn)
-        {
-            this->_hoverInRatio = value.toReal();
-        }
-        else
-        {
-            this->_hoverOutRatio = value.toReal();
-        }
-        if (widgetGuard)
-        {
-            widgetGuard->update();
-        }
-    });
+    QVariantAnimation*& itemAnimation = isFadeIn ? _hoverInAnimation : _hoverOutAnimation;
+    if (!itemAnimation)
+    {
+        itemAnimation = new QVariantAnimation;
+        QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+        connect(itemAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+            if (isFadeIn)
+            {
+                this->_hoverInRatio = value.toReal();
+            }
+            else
+            {
+                this->_hoverOutRatio = value.toReal();
+            }
+            if (widgetGuard && widgetGuard->isVisible())
+            {
+                widgetGuard->update();
+            }
+        });
+    }
+    itemAnimation->stop();
     itemAnimation->setDuration(150);
     itemAnimation->setEasingCurve(QEasingCurve::OutCubic);
     itemAnimation->setStartValue(isFadeIn ? _hoverInRatio : _hoverOutRatio);
     itemAnimation->setEndValue(isFadeIn ? 1.0 : 0.0);
-    itemAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+    itemAnimation->start();
 }

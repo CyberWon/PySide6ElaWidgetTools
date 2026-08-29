@@ -5,6 +5,7 @@
 #include <QProxyStyle>
 
 #include "ElaDef.h"
+class QVariantAnimation;
 class ElaListViewStyle : public QProxyStyle
 {
     Q_OBJECT
@@ -24,6 +25,8 @@ private:
     mutable QPersistentModelIndex _fadeOutIndex;
     mutable qreal _hoverInRatio{0};
     mutable qreal _hoverOutRatio{0};
+    mutable QVariantAnimation* _hoverInAnimation{nullptr};
+    mutable QVariantAnimation* _hoverOutAnimation{nullptr};
     mutable bool _firstPaint{true};
     void _startRowHoverAnimation(bool isFadeIn, const QWidget* widget) const;
 };

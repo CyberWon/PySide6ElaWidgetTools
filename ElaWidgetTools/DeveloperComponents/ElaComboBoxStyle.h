@@ -4,6 +4,7 @@
 #include <QProxyStyle>
 
 #include "ElaDef.h"
+class QVariantAnimation;
 class ElaComboBoxStyle : public QProxyStyle
 {
     Q_OBJECT
@@ -23,6 +24,7 @@ private:
     ElaThemeType::ThemeMode _themeMode;
     int _shadowBorderWidth{6};
     mutable qreal _hoverRatio{0};
+    mutable QVariantAnimation* _hoverAnimation{nullptr};
     mutable bool _lastHovered{false};
     mutable bool _firstPaint{true};
     void _startHoverAnimation(qreal endRatio, const QWidget* widget) const;

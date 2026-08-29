@@ -5,6 +5,7 @@
 #include <QProxyStyle>
 
 #include "ElaDef.h"
+class QVariantAnimation;
 class ElaCheckBoxStyle : public QProxyStyle
 {
     Q_OBJECT
@@ -19,6 +20,8 @@ private:
     ElaThemeType::ThemeMode _themeMode;
     mutable qreal _hoverRatio{0};
     mutable qreal _checkRatio{0};
+    mutable QVariantAnimation* _hoverRatioAnimation{nullptr};
+    mutable QVariantAnimation* _checkRatioAnimation{nullptr};
     mutable bool _lastHovered{false};
     mutable bool _lastChecked{false};
     mutable bool _firstPaint{true};

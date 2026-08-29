@@ -162,21 +162,7 @@ bool ElaIconButton::event(QEvent* event)
         if (isEnabled() && !d->_pIsSelected)
         {
             d->_isAlphaAnimationFinished = false;
-            QPropertyAnimation* alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
-            connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
-                if (!isVisible())
-                {
-                    return;
-                }
-                update();
-            });
-            connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() {
-                d->_isAlphaAnimationFinished = true;
-            });
-            alphaAnimation->setDuration(175);
-            alphaAnimation->setStartValue(d->_pHoverAlpha);
-            alphaAnimation->setEndValue(d->_themeMode == ElaThemeType::Light ? d->_pLightHoverColor.alpha() : d->_pDarkHoverColor.alpha());
-            alphaAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+            d->_startHoverAlphaAnimation(d->_themeMode == ElaThemeType::Light ? d->_pLightHoverColor.alpha() : d->_pDarkHoverColor.alpha());
         }
         break;
     }
@@ -185,21 +171,7 @@ bool ElaIconButton::event(QEvent* event)
         if (isEnabled() && !d->_pIsSelected)
         {
             d->_isAlphaAnimationFinished = false;
-            QPropertyAnimation* alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
-            connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
-                if (!isVisible())
-                {
-                    return;
-                }
-                update();
-            });
-            connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() {
-                d->_isAlphaAnimationFinished = true;
-            });
-            alphaAnimation->setDuration(175);
-            alphaAnimation->setStartValue(d->_pHoverAlpha);
-            alphaAnimation->setEndValue(0);
-            alphaAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+            d->_startHoverAlphaAnimation(0);
         }
         break;
     }

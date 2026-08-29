@@ -220,18 +220,22 @@ QRect ElaSpinBoxStyle::subControlRect(ComplexControl cc, const QStyleOptionCompl
 
 void ElaSpinBoxStyle::_startHoverAnimation(qreal endRatio, const QWidget* widget) const
 {
-    QVariantAnimation* hoverAnimation = new QVariantAnimation;
-    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
-    connect(hoverAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
-        this->_hoverRatio = value.toReal();
-        if (widgetGuard && widgetGuard->isVisible())
-        {
-            widgetGuard->update();
-        }
-    });
-    hoverAnimation->setDuration(150);
-    hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
-    hoverAnimation->setStartValue(_hoverRatio);
-    hoverAnimation->setEndValue(endRatio);
-    hoverAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+    if (!_hoverAnimation)
+    {
+        _hoverAnimation = new QVariantAnimation;
+        QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+        connect(_hoverAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+            this->_hoverRatio = value.toReal();
+            if (widgetGuard && widgetGuard->isVisible())
+            {
+                widgetGuard->update();
+            }
+        });
+    }
+    _hoverAnimation->stop();
+    _hoverAnimation->setDuration(150);
+    _hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    _hoverAnimation->setStartValue(_hoverRatio);
+    _hoverAnimation->setEndValue(endRatio);
+    _hoverAnimation->start();
 }
