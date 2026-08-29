@@ -36,6 +36,10 @@ void ElaPivotView::doCurrentIndexChangedAnimation(const QModelIndex& index)
         _pCurrentIndexRect = visualRect(index);
         QPropertyAnimation* markAnimation = new QPropertyAnimation(this, "pMarkX");
         connect(markAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         connect(markAnimation, &QPropertyAnimation::finished, this, [=]() {
@@ -68,6 +72,10 @@ void ElaPivotView::doCurrentIndexChangedAnimation(const QModelIndex& index)
         _pCurrentIndexRect = visualRect(model()->index(_pPivotStyle->getCurrentIndex(), 0));
         QPropertyAnimation* markAnimation = new QPropertyAnimation(this, "pMarkX");
         connect(markAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         connect(markAnimation, &QPropertyAnimation::finished, this, [=]() {

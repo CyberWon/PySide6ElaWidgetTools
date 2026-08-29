@@ -24,7 +24,10 @@ ElaFooterDelegate::ElaFooterDelegate(QObject* parent)
     _lastSelectMarkTopAnimation = new QPropertyAnimation(this, "lastSelectMarkTop");
     connect(_lastSelectMarkTopAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
         _lastSelectMarkTop = value.toReal();
-        _pElaListView->viewport()->update();
+        if (_pElaListView && _pElaListView->isVisible())
+        {
+            _pElaListView->viewport()->update();
+        }
     });
     _lastSelectMarkTopAnimation->setDuration(300);
     _lastSelectMarkTopAnimation->setEasingCurve(QEasingCurve::InOutSine);
@@ -32,7 +35,10 @@ ElaFooterDelegate::ElaFooterDelegate(QObject* parent)
     _selectMarkBottomAnimation = new QPropertyAnimation(this, "selectMarkBottom");
     connect(_selectMarkBottomAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
         _selectMarkBottom = value.toReal();
-        _pElaListView->viewport()->update();
+        if (_pElaListView && _pElaListView->isVisible())
+        {
+            _pElaListView->viewport()->update();
+        }
     });
     _selectMarkBottomAnimation->setDuration(300);
     _selectMarkBottomAnimation->setEasingCurve(QEasingCurve::InOutSine);
@@ -48,7 +54,10 @@ ElaFooterDelegate::ElaFooterDelegate(QObject* parent)
     _lastSelectMarkBottomAnimation = new QPropertyAnimation(this, "lastSelectMarkBottom");
     connect(_lastSelectMarkBottomAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
         _lastSelectMarkBottom = value.toReal();
-        _pElaListView->viewport()->update();
+        if (_pElaListView && _pElaListView->isVisible())
+        {
+            _pElaListView->viewport()->update();
+        }
     });
     _lastSelectMarkBottomAnimation->setDuration(300);
     _lastSelectMarkBottomAnimation->setEasingCurve(QEasingCurve::InOutSine);
@@ -56,7 +65,10 @@ ElaFooterDelegate::ElaFooterDelegate(QObject* parent)
     _selectMarkTopAnimation = new QPropertyAnimation(this, "selectMarkTop");
     connect(_selectMarkTopAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
         _selectMarkTop = value.toReal();
-        _pElaListView->viewport()->update();
+        if (_pElaListView && _pElaListView->isVisible())
+        {
+            _pElaListView->viewport()->update();
+        }
     });
     _selectMarkTopAnimation->setDuration(300);
     _selectMarkTopAnimation->setEasingCurve(QEasingCurve::InOutSine);

@@ -56,6 +56,10 @@ void ElaPopularCardFloater::showFloater()
 
     QPropertyAnimation* geometryAnimation = new QPropertyAnimation(this, "geometry");
     connect(geometryAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     geometryAnimation->setEasingCurve(QEasingCurve::OutQuad);
@@ -110,6 +114,10 @@ void ElaPopularCardFloater::hideFloater()
     //内容调整动画
     QPropertyAnimation* hoverAnimation = new QPropertyAnimation(this, "pHoverYOffset");
     connect(hoverAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     hoverAnimation->setDuration(300);

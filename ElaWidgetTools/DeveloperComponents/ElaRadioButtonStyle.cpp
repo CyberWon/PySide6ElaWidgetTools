@@ -129,7 +129,7 @@ void ElaRadioButtonStyle::_startRatioAnimation(qreal* targetRatio, qreal endRati
     QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
     connect(ratioAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
         *targetRatio = value.toReal();
-        if (widgetGuard)
+        if (widgetGuard && widgetGuard->isVisible())
         {
             widgetGuard->update();
         }

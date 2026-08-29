@@ -149,13 +149,19 @@ void ElaCalendarPrivate::_doSwitchAnimation(bool isZoomIn)
     _calendarDelegate->setIsTransparent(true);
     QPropertyAnimation* oldPixZoomAnimation = new QPropertyAnimation(this, "pZoomRatio");
     connect(oldPixZoomAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
-        q->update();
+        if (q->isVisible())
+        {
+            q->update();
+        }
     });
     connect(oldPixZoomAnimation, &QPropertyAnimation::finished, this, [=]() {
         _isDrawNewPix = true;
         QPropertyAnimation* newPixZoomAnimation = new QPropertyAnimation(this, "pZoomRatio");
         connect(newPixZoomAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
-            q->update();
+            if (q->isVisible())
+            {
+                q->update();
+            }
         });
         connect(newPixZoomAnimation, &QPropertyAnimation::finished, this, [=]() {
             if (_calendarModel->getDisplayMode() == ElaCalendarType::DayMode)

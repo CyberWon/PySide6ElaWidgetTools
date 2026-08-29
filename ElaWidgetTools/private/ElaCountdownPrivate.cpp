@@ -54,7 +54,7 @@ void ElaCountdownPrivate::_startFlipAnimation()
     Q_Q(ElaCountdown);
     _pFlipAngle = 0;
     QPropertyAnimation* flipAnim = new QPropertyAnimation(this, "pFlipAngle");
-    connect(flipAnim, &QPropertyAnimation::valueChanged, q, [=]() { q->update(); });
+    connect(flipAnim, &QPropertyAnimation::valueChanged, q, [=]() { if (q->isVisible()) { q->update(); } });
     flipAnim->setDuration(300);
     flipAnim->setStartValue(0.0);
     flipAnim->setEndValue(180.0);

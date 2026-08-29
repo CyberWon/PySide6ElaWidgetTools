@@ -34,6 +34,10 @@ ElaRoller::ElaRoller(QWidget* parent)
 
     d->_scrollAnimation = new QPropertyAnimation(d, "pScrollOffset");
     connect(d->_scrollAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     connect(d->_scrollAnimation, &QPropertyAnimation::finished, this, [=]() {

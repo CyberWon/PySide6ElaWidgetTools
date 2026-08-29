@@ -176,7 +176,10 @@ void ElaTreeSelectPrivate::_showPopup()
 	connect(rotateAnimation, &QPropertyAnimation::valueChanged, q, [=](const QVariant &value)
 	{
 		_expandIconRotate = value.toReal();
-		q->update();
+		if (q->isVisible())
+		{
+			q->update();
+		}
 	});
 	rotateAnimation->setStartValue(_expandIconRotate);
 	rotateAnimation->setEndValue(-180.0);
@@ -222,7 +225,10 @@ void ElaTreeSelectPrivate::_hidePopup()
 	connect(rotateAnimation, &QPropertyAnimation::valueChanged, q, [=](const QVariant &value)
 	{
 		_expandIconRotate = value.toReal();
-		q->update();
+		if (q->isVisible())
+		{
+			q->update();
+		}
 	});
 	rotateAnimation->setStartValue(_expandIconRotate);
 	rotateAnimation->setEndValue(0.0);

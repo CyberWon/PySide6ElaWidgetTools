@@ -42,7 +42,10 @@ void ElaMultiSelectComboBoxPrivate::onItemPressed(const QModelIndex& index)
     _refreshCurrentIndexs();
     QPropertyAnimation* markAnimation = new QPropertyAnimation(this, "pExpandMarkWidth");
     connect(markAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
-        q->update();
+        if (q->isVisible())
+        {
+            q->update();
+        }
     });
     markAnimation->setDuration(300);
     markAnimation->setEasingCurve(QEasingCurve::InOutSine);

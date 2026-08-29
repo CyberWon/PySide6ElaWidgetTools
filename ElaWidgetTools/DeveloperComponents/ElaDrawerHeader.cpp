@@ -48,6 +48,10 @@ void ElaDrawerHeader::doExpandOrCollapseAnimation()
 {
     QPropertyAnimation* rotateAnimation = new QPropertyAnimation(this, "pExpandIconRotate");
     connect(rotateAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     rotateAnimation->setDuration(300);

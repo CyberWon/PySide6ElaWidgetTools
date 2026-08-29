@@ -98,7 +98,10 @@ void ElaAppBarPrivate::onStayTopButtonClicked()
 	rotateAnimation->setEndValue(targetRotate);
 	connect(rotateAnimation, &QPropertyAnimation::valueChanged, _stayTopButton, [=]()
 	{
-		_stayTopButton->update();
+		if (_stayTopButton->isVisible())
+		{
+			_stayTopButton->update();
+		}
 	});
 	rotateAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }

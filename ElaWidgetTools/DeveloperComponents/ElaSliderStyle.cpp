@@ -1,6 +1,7 @@
 #include "ElaSliderStyle.h"
 
 #include <QPainter>
+#include <QPointer>
 #include <QPropertyAnimation>
 #include <QStyleOptionSlider>
 
@@ -154,9 +155,13 @@ void ElaSliderStyle::_startRadiusAnimation(qreal startRadius, qreal endRadius, Q
 {
     ElaSliderStyle* style = const_cast<ElaSliderStyle*>(this);
     QPropertyAnimation* circleRadiusAnimation = new QPropertyAnimation(style, "circleRadius");
+    QPointer<QWidget> widgetGuard = widget;
     connect(circleRadiusAnimation, &QPropertyAnimation::valueChanged, style, [=](const QVariant& value) {
                 this->_circleRadius = value.toReal();
-                widget->update(); });
+                if (widgetGuard && widgetGuard->isVisible())
+                {
+                    widgetGuard->update();
+                } });
     circleRadiusAnimation->setEasingCurve(QEasingCurve::InOutSine);
     circleRadiusAnimation->setStartValue(startRadius);
     circleRadiusAnimation->setEndValue(endRadius);

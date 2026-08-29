@@ -17,7 +17,10 @@ ElaProgressBar::ElaProgressBar(QWidget* parent)
     d->_busyAnimation = new QPropertyAnimation(d->_style, "busyStartValue");
     connect(d->_busyAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
         d->_style->setProperty("busyEndValue", value.toInt() + 75);
-        update();
+        if (isVisible())
+        {
+            update();
+        }
     });
     d->_busyAnimation->setDuration(2000);
     d->_busyAnimation->setLoopCount(-1);

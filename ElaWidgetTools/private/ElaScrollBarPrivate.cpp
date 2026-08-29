@@ -27,7 +27,10 @@ void ElaScrollBarPrivate::onRangeChanged(int min, int max)
             q->blockSignals(true);
             q->setMaximum(value.toUInt());
             q->blockSignals(false);
-            q->update();
+            if (q->isVisible())
+            {
+                q->update();
+            }
         });
         rangeSmoothAnimation->setEasingCurve(QEasingCurve::OutSine);
         rangeSmoothAnimation->setDuration(250);

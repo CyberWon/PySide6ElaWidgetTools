@@ -110,6 +110,10 @@ bool ElaPromotionCard::event(QEvent* event)
         QMouseEvent* mouseEvent = dynamic_cast<QMouseEvent*>(event);
         QPropertyAnimation* opacityAnimation = new QPropertyAnimation(d, "pPressOpacity");
         connect(opacityAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         connect(opacityAnimation, &QPropertyAnimation::finished, this, [=]() {

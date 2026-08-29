@@ -36,7 +36,10 @@ void ElaPromotionCardPrivate::_startHoverOpacityAnimation(bool isVisible)
     Q_Q(ElaPromotionCard);
     QPropertyAnimation* opacityAnimation = new QPropertyAnimation(this, "pHoverOpacity");
     connect(opacityAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
-        q->update();
+        if (q->isVisible())
+        {
+            q->update();
+        }
     });
     opacityAnimation->setDuration(250);
     opacityAnimation->setStartValue(_pHoverOpacity);

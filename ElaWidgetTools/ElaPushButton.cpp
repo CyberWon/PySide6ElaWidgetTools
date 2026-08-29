@@ -119,6 +119,10 @@ bool ElaPushButton::event(QEvent* event)
         {
             QPropertyAnimation* alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
             connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+                if (!isVisible())
+                {
+                    return;
+                }
                 update();
             });
             alphaAnimation->setDuration(175);

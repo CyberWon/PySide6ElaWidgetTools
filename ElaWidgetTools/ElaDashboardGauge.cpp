@@ -62,7 +62,7 @@ void ElaDashboardGauge::setValue(qreal value)
 		animation->setStartValue(d->_animatedValue);
 		animation->setEndValue(value);
 		animation->setEasingCurve(QEasingCurve::OutCubic);
-		connect(animation, &QPropertyAnimation::valueChanged, this, [this]() { update(); });
+		connect(animation, &QPropertyAnimation::valueChanged, this, [this]() { if (isVisible()) { update(); } });
 		animation->start(QAbstractAnimation::DeleteWhenStopped);
 	}
 	else
