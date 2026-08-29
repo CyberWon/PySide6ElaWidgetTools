@@ -251,25 +251,30 @@ QRect ElaTabBarStyle::subElementRect(SubElement element, const QStyleOption* opt
 
 void ElaTabBarStyle::_startTabHoverAnimation(bool isFadeIn, const QWidget* widget) const
 {
-    QVariantAnimation* tabAnimation = new QVariantAnimation;
-    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
-    connect(tabAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
-        if (isFadeIn)
-        {
-            this->_hoverInRatio = value.toReal();
-        }
-        else
-        {
-            this->_hoverOutRatio = value.toReal();
-        }
-        if (widgetGuard)
-        {
-            widgetGuard->update();
-        }
-    });
+    QVariantAnimation*& tabAnimation = isFadeIn ? _hoverInAnimation : _hoverOutAnimation;
+    if (!tabAnimation)
+    {
+        tabAnimation = new QVariantAnimation;
+        QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+        connect(tabAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+            if (isFadeIn)
+            {
+                this->_hoverInRatio = value.toReal();
+            }
+            else
+            {
+                this->_hoverOutRatio = value.toReal();
+            }
+            if (widgetGuard && widgetGuard->isVisible())
+            {
+                widgetGuard->update();
+            }
+        });
+    }
+    tabAnimation->stop();
     tabAnimation->setDuration(150);
     tabAnimation->setEasingCurve(QEasingCurve::OutCubic);
     tabAnimation->setStartValue(isFadeIn ? _hoverInRatio : _hoverOutRatio);
     tabAnimation->setEndValue(isFadeIn ? 1.0 : 0.0);
-    tabAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+    tabAnimation->start();
 }

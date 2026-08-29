@@ -67,18 +67,7 @@ bool ElaToggleButton::event(QEvent* event)
     {
         if (isEnabled())
         {
-            QPropertyAnimation* hoverAnimation = new QPropertyAnimation(d, "pHoverAlpha");
-            connect(hoverAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
-                if (!isVisible())
-                {
-                    return;
-                }
-                update();
-            });
-            hoverAnimation->setDuration(175);
-            hoverAnimation->setStartValue(d->_pHoverAlpha);
-            hoverAnimation->setEndValue(event->type() == QEvent::Enter ? 255 : 0);
-            hoverAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+            d->_startHoverAlphaAnimation(event->type() == QEvent::Enter ? 255 : 0);
         }
         update();
         break;
@@ -105,28 +94,7 @@ void ElaToggleButton::mouseReleaseEvent(QMouseEvent* event)
     d->_isPressed = false;
     d->_isAlphaAnimationFinished = false;
     d->_isToggled = !d->_isToggled;
-    QPropertyAnimation* alphaAnimation = new QPropertyAnimation(d, "pToggleAlpha");
-    connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
-        if (!isVisible())
-        {
-            return;
-        }
-        update();
-    });
-    connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() {
-        d->_isAlphaAnimationFinished = true;
-    });
-    alphaAnimation->setDuration(250);
-    alphaAnimation->setStartValue(d->_pToggleAlpha);
-    if (d->_isToggled)
-    {
-        alphaAnimation->setEndValue(255);
-    }
-    else
-    {
-        alphaAnimation->setEndValue(0);
-    }
-    alphaAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+    d->_startToggleAlphaAnimation(d->_isToggled ? 255 : 0);
     Q_EMIT this->toggled(d->_isToggled);
     QWidget::mouseReleaseEvent(event);
 }

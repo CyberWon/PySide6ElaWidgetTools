@@ -220,25 +220,30 @@ QSize ElaListViewStyle::sizeFromContents(ContentsType type, const QStyleOption* 
 
 void ElaListViewStyle::_startRowHoverAnimation(bool isFadeIn, const QWidget* widget) const
 {
-    QVariantAnimation* rowAnimation = new QVariantAnimation;
-    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
-    connect(rowAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
-        if (isFadeIn)
-        {
-            this->_hoverInRatio = value.toReal();
-        }
-        else
-        {
-            this->_hoverOutRatio = value.toReal();
-        }
-        if (widgetGuard)
-        {
-            widgetGuard->update();
-        }
-    });
+    QVariantAnimation*& rowAnimation = isFadeIn ? _hoverInAnimation : _hoverOutAnimation;
+    if (!rowAnimation)
+    {
+        rowAnimation = new QVariantAnimation;
+        QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+        connect(rowAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+            if (isFadeIn)
+            {
+                this->_hoverInRatio = value.toReal();
+            }
+            else
+            {
+                this->_hoverOutRatio = value.toReal();
+            }
+            if (widgetGuard && widgetGuard->isVisible())
+            {
+                widgetGuard->update();
+            }
+        });
+    }
+    rowAnimation->stop();
     rowAnimation->setDuration(150);
     rowAnimation->setEasingCurve(QEasingCurve::OutCubic);
     rowAnimation->setStartValue(isFadeIn ? _hoverInRatio : _hoverOutRatio);
     rowAnimation->setEndValue(isFadeIn ? 1.0 : 0.0);
-    rowAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+    rowAnimation->start();
 }

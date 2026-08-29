@@ -125,18 +125,23 @@ int ElaRadioButtonStyle::pixelMetric(PixelMetric metric, const QStyleOption* opt
 
 void ElaRadioButtonStyle::_startRatioAnimation(qreal* targetRatio, qreal endRatio, int duration, QEasingCurve::Type curve, const QWidget* widget) const
 {
-    QVariantAnimation* ratioAnimation = new QVariantAnimation;
-    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
-    connect(ratioAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
-        *targetRatio = value.toReal();
-        if (widgetGuard && widgetGuard->isVisible())
-        {
-            widgetGuard->update();
-        }
-    });
+    QVariantAnimation*& ratioAnimation = targetRatio == &_hoverRatio ? _hoverRatioAnimation : _checkRatioAnimation;
+    if (!ratioAnimation)
+    {
+        ratioAnimation = new QVariantAnimation;
+        QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+        connect(ratioAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+            *targetRatio = value.toReal();
+            if (widgetGuard && widgetGuard->isVisible())
+            {
+                widgetGuard->update();
+            }
+        });
+    }
+    ratioAnimation->stop();
     ratioAnimation->setDuration(duration);
     ratioAnimation->setEasingCurve(QEasingCurve(curve));
     ratioAnimation->setStartValue(*targetRatio);
     ratioAnimation->setEndValue(endRatio);
-    ratioAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+    ratioAnimation->start();
 }

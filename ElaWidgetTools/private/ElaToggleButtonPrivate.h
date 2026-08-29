@@ -5,6 +5,7 @@
 
 #include "ElaDef.h"
 class ElaToggleButton;
+class QPropertyAnimation;
 class ElaToggleButtonPrivate : public QObject
 {
     Q_OBJECT
@@ -22,6 +23,11 @@ private:
     bool _isToggled{false};
     bool _isPressed{false};
     ElaThemeType::ThemeMode _themeMode;
+    QPropertyAnimation* _hoverAlphaAnimation{nullptr};
+    QPropertyAnimation* _toggleAlphaAnimation{nullptr};
+
+    void _startHoverAlphaAnimation(qreal endValue);
+    void _startToggleAlphaAnimation(qreal endValue);
 };
 
 #endif // ELATOGGLEBUTTONPRIVATE_H

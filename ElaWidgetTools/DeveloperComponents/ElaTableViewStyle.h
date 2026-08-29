@@ -5,6 +5,7 @@
 
 #include "ElaDef.h"
 class QStyleOptionViewItem;
+class QVariantAnimation;
 class ElaTableViewStyle : public QProxyStyle
 {
     Q_OBJECT
@@ -24,6 +25,8 @@ private:
     mutable int _fadeOutRow{-1};
     mutable qreal _hoverInRatio{0};
     mutable qreal _hoverOutRatio{0};
+    mutable QVariantAnimation* _hoverInAnimation{nullptr};
+    mutable QVariantAnimation* _hoverOutAnimation{nullptr};
     void _startRowHoverAnimation(bool isFadeIn, const QWidget* widget) const;
 };
 

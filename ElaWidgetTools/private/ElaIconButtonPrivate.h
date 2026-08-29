@@ -7,6 +7,7 @@
 
 #include "ElaDef.h"
 class ElaIconButton;
+class QPropertyAnimation;
 class ElaIconButtonPrivate : public QObject
 {
     Q_OBJECT
@@ -30,6 +31,9 @@ private:
     QPixmap _iconPix;
     bool _isAlphaAnimationFinished{true};
     ElaThemeType::ThemeMode _themeMode;
+    QPropertyAnimation* _hoverAlphaAnimation{nullptr};
+
+    void _startHoverAlphaAnimation(qreal endValue);
 };
 
 #endif // ELAICONBUTTONPRIVATE_H

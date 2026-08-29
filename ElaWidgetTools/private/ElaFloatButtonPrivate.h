@@ -7,6 +7,7 @@
 
 class ElaFloatButton;
 class ElaMenu;
+class QPropertyAnimation;
 class ElaFloatButtonPrivate : public QObject
 {
 	Q_OBJECT
@@ -27,6 +28,9 @@ private:
 	bool _isPressed{false};
 	bool _isAlphaAnimationFinished{true};
 	ElaThemeType::ThemeMode _themeMode;
+	QPropertyAnimation* _hoverAlphaAnimation{nullptr};
+
+	void _startHoverAlphaAnimation(qreal endValue);
 };
 
 #endif // ELAFLOATBUTTONPRIVATE_H
