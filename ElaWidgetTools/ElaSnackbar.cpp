@@ -1,6 +1,5 @@
 #include "ElaSnackbar.h"
 
-#include <QGraphicsOpacityEffect>
 #include <QGuiApplication>
 #include <QMouseEvent>
 #include <QPainter>
@@ -133,11 +132,10 @@ ElaSnackbar::ElaSnackbar(SnackbarType type, const QString &text, const QString &
 	move(s_centerX, targetY + 20);
 	show();
 
-	QGraphicsOpacityEffect *opacityEffect = new QGraphicsOpacityEffect(this);
-	opacityEffect->setOpacity(0);
-	setGraphicsEffect(opacityEffect);
+	// 顶层窗口直接用窗口透明度做淡入淡出，避免 QGraphicsOpacityEffect 每帧的离屏合成
+	setWindowOpacity(0.0);
 
-	QPropertyAnimation *fadeIn = new QPropertyAnimation(opacityEffect, "opacity", this);
+	QPropertyAnimation *fadeIn = new QPropertyAnimation(this, "windowOpacity", this);
 	fadeIn->setDuration(250);
 	fadeIn->setStartValue(0.0);
 	fadeIn->setEndValue(1.0);
@@ -159,9 +157,9 @@ ElaSnackbar::ElaSnackbar(SnackbarType type, const QString &text, const QString &
 		s_activeSnackbars.removeOne(this);
 		_reflowAll();
 
-		QPropertyAnimation *fadeOut = new QPropertyAnimation(opacityEffect, "opacity", this);
+		QPropertyAnimation *fadeOut = new QPropertyAnimation(this, "windowOpacity", this);
 		fadeOut->setDuration(300);
-		fadeOut->setStartValue(opacityEffect->opacity());
+		fadeOut->setStartValue(windowOpacity());
 		fadeOut->setEndValue(0.0);
 		fadeOut->setEasingCurve(QEasingCurve::InCubic);
 		connect(fadeOut, &QPropertyAnimation::finished, this, [=]()

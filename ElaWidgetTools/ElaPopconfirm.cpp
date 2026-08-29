@@ -1,7 +1,6 @@
 #include "ElaPopconfirm.h"
 
 #include <QApplication>
-#include <QGraphicsOpacityEffect>
 #include <QHBoxLayout>
 #include <QPainter>
 #include <QPropertyAnimation>
@@ -35,9 +34,8 @@ ElaPopconfirm::ElaPopconfirm(QWidget *parent) : QWidget{nullptr}, d_ptr(new ElaP
 	setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
 	setAttribute(Qt::WA_TranslucentBackground);
 
-	d->_opacityEffect = new QGraphicsOpacityEffect(this);
-	d->_opacityEffect->setOpacity(0);
-	setGraphicsEffect(d->_opacityEffect);
+	// 顶层窗口直接用窗口透明度做淡入，避免 QGraphicsOpacityEffect 每帧的离屏合成
+	setWindowOpacity(0.0);
 
 	d->_cancelButton = new ElaPushButton(d->_pCancelButtonText, this);
 	d->_cancelButton->setFixedHeight(30);
@@ -261,7 +259,8 @@ bool ElaPopconfirmPrivate::eventFilter(QObject *watched, QEvent *event)
 
 void ElaPopconfirmPrivate::_doShowAnimation()
 {
-	QPropertyAnimation *animation = new QPropertyAnimation(_opacityEffect, "opacity");
+	Q_Q(ElaPopconfirm);
+	QPropertyAnimation *animation = new QPropertyAnimation(q, "windowOpacity");
 	animation->setDuration(250);
 	animation->setStartValue(0.0);
 	animation->setEndValue(1.0);

@@ -2,7 +2,6 @@
 
 #include <QApplication>
 #include <QEvent>
-#include <QGraphicsOpacityEffect>
 #include <QHBoxLayout>
 #include <QMouseEvent>
 #include <QPainter>
@@ -119,20 +118,15 @@ ElaTeachingTip::TailPosition ElaTeachingTipPrivate::_calculateAutoTailPosition()
 void ElaTeachingTipPrivate::_doShowAnimation()
 {
 	Q_Q(ElaTeachingTip);
-	QGraphicsOpacityEffect *effect = new QGraphicsOpacityEffect(q);
-	q->setGraphicsEffect(effect);
+	// 顶层窗口直接用窗口透明度做淡入，避免 QGraphicsOpacityEffect 每帧的离屏合成
 	_pOpacity = 0.0;
-	effect->setOpacity(0);
+	q->setWindowOpacity(0.0);
 
-	QPropertyAnimation *animation = new QPropertyAnimation(effect, "opacity", q);
+	QPropertyAnimation *animation = new QPropertyAnimation(q, "windowOpacity", q);
 	animation->setDuration(200);
 	animation->setStartValue(0.0);
 	animation->setEndValue(1.0);
 	animation->setEasingCurve(QEasingCurve::OutCubic);
-	QObject::connect(animation, &QPropertyAnimation::finished, q, [=]()
-	{
-		q->setGraphicsEffect(nullptr);
-	});
 	animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 

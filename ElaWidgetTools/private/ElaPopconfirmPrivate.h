@@ -5,7 +5,6 @@
 
 #include "ElaDef.h"
 class QVBoxLayout;
-class QGraphicsOpacityEffect;
 class ElaPushButton;
 class ElaPopconfirm;
 class ElaPopconfirmPrivate : public QObject
@@ -29,7 +28,6 @@ protected:
 private:
     ElaThemeType::ThemeMode _themeMode;
     QVBoxLayout* _mainLayout{nullptr};
-    QGraphicsOpacityEffect* _opacityEffect{nullptr};
     ElaPushButton* _confirmButton{nullptr};
     ElaPushButton* _cancelButton{nullptr};
     int _shadowBorderWidth{8};
