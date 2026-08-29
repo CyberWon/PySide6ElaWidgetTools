@@ -4,7 +4,9 @@
 #include <QDebug>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QStyleOptionSpinBox>
+#include <QVariantAnimation>
 #include <cmath>
 ElaSpinBoxStyle::ElaSpinBoxStyle(QStyle* style)
 {
@@ -36,16 +38,22 @@ void ElaSpinBoxStyle::drawComplexControl(ComplexControl control, const QStyleOpt
         QRect spinBoxRect = sopt->rect.adjusted(1, 1, -1, -1);
         painter->setPen(ElaThemeColor(_themeMode, BasicBorder));
         bool isEnable = sopt->state.testFlag(QStyle::State_Enabled);
+        // 悬停过渡
+        bool isHovered = sopt->state.testFlag(QStyle::State_MouseOver);
+        if (_firstPaint)
+        {
+            _firstPaint = false;
+            _lastHovered = isHovered;
+            _hoverRatio = isHovered ? 1 : 0;
+        }
+        else if (isHovered != _lastHovered)
+        {
+            _startHoverAnimation(isHovered ? 1 : 0, widget);
+            _lastHovered = isHovered;
+        }
         if (isEnable)
         {
-            if (sopt->state & QStyle::State_MouseOver)
-            {
-                painter->setBrush(ElaThemeColor(_themeMode, BasicHover));
-            }
-            else
-            {
-                painter->setBrush(ElaThemeColor(_themeMode, BasicBase));
-            }
+            painter->setBrush(elaMixColor(ElaThemeColor(_themeMode, BasicBase), ElaThemeColor(_themeMode, BasicHover), _hoverRatio));
         }
         else
         {
@@ -208,4 +216,22 @@ QRect ElaSpinBoxStyle::subControlRect(ComplexControl cc, const QStyleOptionCompl
     }
     }
     return rect;
+}
+
+void ElaSpinBoxStyle::_startHoverAnimation(qreal endRatio, const QWidget* widget) const
+{
+    QVariantAnimation* hoverAnimation = new QVariantAnimation;
+    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+    connect(hoverAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+        this->_hoverRatio = value.toReal();
+        if (widgetGuard)
+        {
+            widgetGuard->update();
+        }
+    });
+    hoverAnimation->setDuration(150);
+    hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    hoverAnimation->setStartValue(_hoverRatio);
+    hoverAnimation->setEndValue(endRatio);
+    hoverAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }

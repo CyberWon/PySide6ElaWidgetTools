@@ -16,6 +16,10 @@ public:
 
 private:
     ElaThemeType::ThemeMode _themeMode;
+    mutable qreal _hoverRatio{0};
+    mutable bool _lastHovered{false};
+    mutable bool _firstPaint{true};
+    void _startHoverAnimation(qreal endRatio, const QWidget* widget) const;
 };
 
 #endif // ELASPINBOXSTYLE_H
