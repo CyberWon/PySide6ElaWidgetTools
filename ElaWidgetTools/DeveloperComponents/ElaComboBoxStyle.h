@@ -22,6 +22,10 @@ public:
 private:
     ElaThemeType::ThemeMode _themeMode;
     int _shadowBorderWidth{6};
+    mutable qreal _hoverRatio{0};
+    mutable bool _lastHovered{false};
+    mutable bool _firstPaint{true};
+    void _startHoverAnimation(qreal endRatio, const QWidget* widget) const;
 };
 
 #endif // ELACOMBOBOXSTYLE_H

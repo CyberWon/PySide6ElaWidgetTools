@@ -3,7 +3,9 @@
 #include <QDebug>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QStyleOption>
+#include <QVariantAnimation>
 
 #include "ElaTheme.h"
 ElaComboBoxStyle::ElaComboBoxStyle(QStyle* style)
@@ -148,12 +150,23 @@ void ElaComboBoxStyle::drawComplexControl(ComplexControl control, const QStyleOp
             painter->setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
             //背景绘制
             bool isEnabled = copt->state.testFlag(QStyle::State_Enabled);
+            // 悬停过渡
+            bool isHovered = copt->state.testFlag(QStyle::State_MouseOver);
+            if (_firstPaint)
+            {
+                _firstPaint = false;
+                _lastHovered = isHovered;
+                _hoverRatio = isHovered ? 1 : 0;
+            }
+            else if (isHovered != _lastHovered)
+            {
+                _startHoverAnimation(isHovered ? 1 : 0, widget);
+                _lastHovered = isHovered;
+            }
             painter->setPen(ElaThemeColor(_themeMode, BasicBorder));
             painter->setBrush(isEnabled ? (copt->state.testFlag(QStyle::State_HasFocus) && copt->editable)
                                       ? ElaThemeColor(_themeMode, DialogBase)
-                                      : copt->state.testFlag(QStyle::State_MouseOver)
-                                      ? ElaThemeColor(_themeMode, BasicHover)
-                                      : ElaThemeColor(_themeMode, BasicBase)
+                                      : elaMixColor(ElaThemeColor(_themeMode, BasicBase), ElaThemeColor(_themeMode, BasicHover), _hoverRatio)
                                         : ElaThemeColor(_themeMode, BasicDisable));
             QRect comboBoxRect = copt->rect;
             comboBoxRect.adjust(_shadowBorderWidth, 1, -_shadowBorderWidth, -1);
@@ -259,4 +272,22 @@ QSize ElaComboBoxStyle::sizeFromContents(ContentsType type, const QStyleOption* 
     }
     }
     return QProxyStyle::sizeFromContents(type, option, size, widget);
+}
+
+void ElaComboBoxStyle::_startHoverAnimation(qreal endRatio, const QWidget* widget) const
+{
+    QVariantAnimation* hoverAnimation = new QVariantAnimation;
+    QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+    connect(hoverAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
+        this->_hoverRatio = value.toReal();
+        if (widgetGuard)
+        {
+            widgetGuard->update();
+        }
+    });
+    hoverAnimation->setDuration(150);
+    hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    hoverAnimation->setStartValue(_hoverRatio);
+    hoverAnimation->setEndValue(endRatio);
+    hoverAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }
