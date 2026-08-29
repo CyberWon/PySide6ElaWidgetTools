@@ -44,6 +44,10 @@ void ElaRollerPickerContainer::doPickerAnimation()
         update();
     });
     connect(offsetAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     offsetAnimation->setEasingCurve(QEasingCurve::OutCubic);

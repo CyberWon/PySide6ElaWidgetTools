@@ -224,7 +224,7 @@ void ElaSpinBoxStyle::_startHoverAnimation(qreal endRatio, const QWidget* widget
     QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
     connect(hoverAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
         this->_hoverRatio = value.toReal();
-        if (widgetGuard)
+        if (widgetGuard && widgetGuard->isVisible())
         {
             widgetGuard->update();
         }

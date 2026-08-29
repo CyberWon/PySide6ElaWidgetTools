@@ -69,6 +69,10 @@ bool ElaToggleButton::event(QEvent* event)
         {
             QPropertyAnimation* hoverAnimation = new QPropertyAnimation(d, "pHoverAlpha");
             connect(hoverAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+                if (!isVisible())
+                {
+                    return;
+                }
                 update();
             });
             hoverAnimation->setDuration(175);
@@ -103,6 +107,10 @@ void ElaToggleButton::mouseReleaseEvent(QMouseEvent* event)
     d->_isToggled = !d->_isToggled;
     QPropertyAnimation* alphaAnimation = new QPropertyAnimation(d, "pToggleAlpha");
     connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() {

@@ -71,6 +71,10 @@ void ElaLineEdit::focusInEvent(QFocusEvent* event)
         }
         QPropertyAnimation* markAnimation = new QPropertyAnimation(d, "pExpandMarkWidth");
         connect(markAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         markAnimation->setDuration(300);
@@ -94,6 +98,10 @@ void ElaLineEdit::focusOutEvent(QFocusEvent* event)
         }
         QPropertyAnimation* markAnimation = new QPropertyAnimation(d, "pExpandMarkWidth");
         connect(markAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         markAnimation->setDuration(300);

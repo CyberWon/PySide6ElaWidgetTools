@@ -73,6 +73,10 @@ void ElaDrawerContainer::doDrawerAnimation(bool isExpand)
     _pContainerPix = grab(rect());
     QPropertyAnimation* opacityAnimation = new QPropertyAnimation(this, "pOpacity");
     connect(opacityAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     connect(opacityAnimation, &QPropertyAnimation::finished, this, [=]() {

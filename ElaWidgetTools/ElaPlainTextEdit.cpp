@@ -51,6 +51,10 @@ void ElaPlainTextEdit::focusInEvent(QFocusEvent* event)
     {
         QPropertyAnimation* markAnimation = new QPropertyAnimation(d->_style, "pExpandMarkWidth");
         connect(markAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         markAnimation->setDuration(300);
@@ -69,6 +73,10 @@ void ElaPlainTextEdit::focusOutEvent(QFocusEvent* event)
     {
         QPropertyAnimation* markAnimation = new QPropertyAnimation(d->_style, "pExpandMarkWidth");
         connect(markAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         markAnimation->setDuration(300);

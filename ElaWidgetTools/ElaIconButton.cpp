@@ -164,6 +164,10 @@ bool ElaIconButton::event(QEvent* event)
             d->_isAlphaAnimationFinished = false;
             QPropertyAnimation* alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
             connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+                if (!isVisible())
+                {
+                    return;
+                }
                 update();
             });
             connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() {
@@ -183,6 +187,10 @@ bool ElaIconButton::event(QEvent* event)
             d->_isAlphaAnimationFinished = false;
             QPropertyAnimation* alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
             connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+                if (!isVisible())
+                {
+                    return;
+                }
                 update();
             });
             connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() {

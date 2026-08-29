@@ -109,6 +109,10 @@ void ElaCentralStackedWidget::doWindowStackSwitch(ElaWindowType::StackSwitchMode
             targetWidget->setVisible(false);
             QPropertyAnimation* popupAnimation = new QPropertyAnimation(this, "pPopupAnimationYOffset");
             connect(popupAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+                if (!isVisible())
+                {
+                    return;
+                }
                 update();
             });
             connect(popupAnimation, &QPropertyAnimation::finished, this, [=]() {
@@ -135,12 +139,20 @@ void ElaCentralStackedWidget::doWindowStackSwitch(ElaWindowType::StackSwitchMode
         _isDrawNewPix = false;
         QPropertyAnimation* currentPixZoomAnimation = new QPropertyAnimation(this, "pScaleAnimationRatio");
         connect(currentPixZoomAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         connect(currentPixZoomAnimation, &QPropertyAnimation::finished, this, [=]() {
             _isDrawNewPix = true;
             QPropertyAnimation* targetPixZoomAnimation = new QPropertyAnimation(this, "pScaleAnimationRatio");
             connect(targetPixZoomAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+                if (!isVisible())
+                {
+                    return;
+                }
                 update();
             });
             connect(targetPixZoomAnimation, &QPropertyAnimation::finished, this, [=]() {
@@ -201,6 +213,10 @@ void ElaCentralStackedWidget::doWindowStackSwitch(ElaWindowType::StackSwitchMode
         targetWidget->setVisible(false);
         QPropertyAnimation* flipAnimation = new QPropertyAnimation(this, "pFlipAnimationRatio");
         connect(flipAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         connect(flipAnimation, &QPropertyAnimation::finished, this, [=]() {

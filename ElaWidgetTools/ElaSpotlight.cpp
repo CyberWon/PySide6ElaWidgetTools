@@ -140,7 +140,7 @@ void ElaSpotlight::start()
 
 	d->_pOpacity = 0.0;
 	QPropertyAnimation *fadeIn = new QPropertyAnimation(d, "pOpacity");
-	connect(fadeIn, &QPropertyAnimation::valueChanged, this, [=]() { update(); });
+	connect(fadeIn, &QPropertyAnimation::valueChanged, this, [=]() { if (isVisible()) { update(); } });
 	fadeIn->setDuration(300);
 	fadeIn->setStartValue(0.0);
 	fadeIn->setEndValue(1.0);
@@ -178,7 +178,10 @@ void ElaSpotlight::finish()
 	connect(fadeOut, &QPropertyAnimation::valueChanged, this, [=]()
 	{
 		d->_tipWidget->setWindowOpacity(d->_pOpacity);
-		update();
+		if (isVisible())
+		{
+			update();
+		}
 	});
 	fadeOut->setDuration(250);
 	fadeOut->setStartValue(d->_pOpacity);

@@ -208,7 +208,7 @@ bool ElaFloatButton::event(QEvent *event)
 		{
 			d->_isAlphaAnimationFinished = false;
 			QPropertyAnimation *alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
-			connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=]() { update(); });
+			connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=]() { if (isVisible()) { update(); } });
 			connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() { d->_isAlphaAnimationFinished = true; });
 			alphaAnimation->setDuration(200);
 			alphaAnimation->setStartValue(d->_pHoverAlpha);
@@ -220,7 +220,7 @@ bool ElaFloatButton::event(QEvent *event)
 		{
 			d->_isAlphaAnimationFinished = false;
 			QPropertyAnimation *alphaAnimation = new QPropertyAnimation(d, "pHoverAlpha");
-			connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=]() { update(); });
+			connect(alphaAnimation, &QPropertyAnimation::valueChanged, this, [=]() { if (isVisible()) { update(); } });
 			connect(alphaAnimation, &QPropertyAnimation::finished, this, [=]() { d->_isAlphaAnimationFinished = true; });
 			alphaAnimation->setDuration(200);
 			alphaAnimation->setStartValue(d->_pHoverAlpha);

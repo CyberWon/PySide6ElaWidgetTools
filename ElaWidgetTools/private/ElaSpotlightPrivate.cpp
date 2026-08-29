@@ -47,7 +47,10 @@ void ElaSpotlightPrivate::_showStep(int index, bool animate)
     {
         QPropertyAnimation* moveAnimation = new QPropertyAnimation(this, "pSpotlightRect");
         connect(moveAnimation, &QPropertyAnimation::valueChanged, q, [=]() {
-            q->update();
+            if (q->isVisible())
+            {
+                q->update();
+            }
             _updateTipPosition();
         });
         moveAnimation->setDuration(350);

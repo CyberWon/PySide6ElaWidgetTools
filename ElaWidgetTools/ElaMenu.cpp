@@ -152,6 +152,10 @@ void ElaMenu::showEvent(QShowEvent* event)
         update();
     });
     connect(posAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     posAnimation->setEasingCurve(QEasingCurve::OutCubic);

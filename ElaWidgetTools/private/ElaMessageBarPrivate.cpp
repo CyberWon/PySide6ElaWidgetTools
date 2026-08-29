@@ -54,7 +54,10 @@ void ElaMessageBarPrivate::messageBarEnd()
     QPropertyAnimation* barFinishedOpacityAnimation = new QPropertyAnimation(this, "pOpacity");
     connect(barFinishedOpacityAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
         _closeButton->setOpacity(_pOpacity);
-        q->update();
+        if (q->isVisible())
+        {
+            q->update();
+        }
     });
     connect(barFinishedOpacityAnimation, &QPropertyAnimation::finished, this, [=]() {
         q->deleteLater();
@@ -125,7 +128,10 @@ void ElaMessageBarPrivate::_messageBarCreate(int displayMsec)
         });
         QPropertyAnimation* timePercentAnimation = new QPropertyAnimation(this, "pTimePercent");
         connect(timePercentAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
-            q->update();
+            if (q->isVisible())
+            {
+                q->update();
+            }
         });
         timePercentAnimation->setStartValue(100);
         timePercentAnimation->setEndValue(0);

@@ -91,6 +91,10 @@ bool ElaPopularCard::event(QEvent* event)
         d->_floatTimer->start(450);
         QPropertyAnimation* hoverAnimation = new QPropertyAnimation(d, "pHoverYOffset");
         connect(hoverAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         hoverAnimation->setDuration(130);
@@ -109,6 +113,10 @@ bool ElaPopularCard::event(QEvent* event)
         d->_floatTimer->stop();
         QPropertyAnimation* hoverAnimation = new QPropertyAnimation(d, "pHoverYOffset");
         connect(hoverAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
+            if (!isVisible())
+            {
+                return;
+            }
             update();
         });
         hoverAnimation->setDuration(130);

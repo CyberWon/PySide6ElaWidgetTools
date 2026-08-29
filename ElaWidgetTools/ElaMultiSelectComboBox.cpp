@@ -305,6 +305,10 @@ void ElaMultiSelectComboBox::showPopup()
 		QPropertyAnimation *rotateAnimation = new QPropertyAnimation(d, "pExpandIconRotate");
 		connect(rotateAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant &value)
 		{
+			if (!isVisible())
+			{
+				return;
+			}
 			update();
 		});
 		rotateAnimation->setDuration(300);
@@ -333,6 +337,10 @@ void ElaMultiSelectComboBox::_resetIndicatorAnimations()
 	QPropertyAnimation *rotateAnimation = new QPropertyAnimation(d, "pExpandIconRotate");
 	connect(rotateAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant &value)
 	{
+		if (!isVisible())
+		{
+			return;
+		}
 		update();
 	});
 	rotateAnimation->setDuration(300);

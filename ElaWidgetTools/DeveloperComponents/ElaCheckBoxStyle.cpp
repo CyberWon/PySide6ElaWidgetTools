@@ -146,7 +146,7 @@ void ElaCheckBoxStyle::_startRatioAnimation(qreal* targetRatio, qreal endRatio, 
     QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
     connect(ratioAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
         *targetRatio = value.toReal();
-        if (widgetGuard)
+        if (widgetGuard && widgetGuard->isVisible())
         {
             widgetGuard->update();
         }

@@ -40,7 +40,10 @@ ElaCopyButton::ElaCopyButton(QWidget *parent) : QPushButton(parent), d_ptr(new E
 		connect(fadeAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant &value)
 		{
 			d->_iconOpacity = value.toReal();
-			update();
+			if (isVisible())
+			{
+				update();
+			}
 		});
 		fadeAnimation->setStartValue(0.0);
 		fadeAnimation->setEndValue(1.0);
@@ -122,7 +125,10 @@ void ElaCopyButton::mouseReleaseEvent(QMouseEvent *event)
 		connect(fadeAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant &value)
 		{
 			d->_iconOpacity = value.toReal();
-			update();
+			if (isVisible())
+			{
+				update();
+			}
 		});
 		fadeAnimation->setStartValue(0.0);
 		fadeAnimation->setEndValue(1.0);

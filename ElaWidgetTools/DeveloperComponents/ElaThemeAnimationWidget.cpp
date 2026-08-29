@@ -23,6 +23,10 @@ void ElaThemeAnimationWidget::startAnimation(int msec)
         this->deleteLater();
     });
     connect(themeChangeAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+        if (!isVisible())
+        {
+            return;
+        }
         update();
     });
     themeChangeAnimation->setStartValue(0);

@@ -152,7 +152,10 @@ void ElaScrollBarStyle::startExpandAnimation(bool isExpand)
         _pIsExpand = true;
         QPropertyAnimation* opacityAnimation = new QPropertyAnimation(this, "pOpacity");
         connect(opacityAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
-            _pScrollBar->update();
+            if (_pScrollBar && _pScrollBar->isVisible())
+            {
+                _pScrollBar->update();
+            }
         });
         opacityAnimation->setDuration(250);
         opacityAnimation->setEasingCurve(QEasingCurve::InOutSine);
@@ -174,7 +177,10 @@ void ElaScrollBarStyle::startExpandAnimation(bool isExpand)
             _pIsExpand = false;
         });
         connect(opacityAnimation, &QPropertyAnimation::valueChanged, this, [=]() {
-            _pScrollBar->update();
+            if (_pScrollBar && _pScrollBar->isVisible())
+            {
+                _pScrollBar->update();
+            }
         });
         opacityAnimation->setDuration(250);
         opacityAnimation->setEasingCurve(QEasingCurve::InOutSine);

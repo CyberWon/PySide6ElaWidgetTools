@@ -104,6 +104,10 @@ bool ElaToolButton::eventFilter(QObject* watched, QEvent* event)
             //指示器动画
             QPropertyAnimation* rotateAnimation = new QPropertyAnimation(d->_toolButtonStyle, "pExpandIconRotate");
             connect(rotateAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+                if (!isVisible())
+                {
+                    return;
+                }
                 update();
             });
             rotateAnimation->setDuration(300);
@@ -118,6 +122,10 @@ bool ElaToolButton::eventFilter(QObject* watched, QEvent* event)
             //指示器动画
             QPropertyAnimation* rotateAnimation = new QPropertyAnimation(d->_toolButtonStyle, "pExpandIconRotate");
             connect(rotateAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
+                if (!isVisible())
+                {
+                    return;
+                }
                 update();
             });
             rotateAnimation->setDuration(300);
