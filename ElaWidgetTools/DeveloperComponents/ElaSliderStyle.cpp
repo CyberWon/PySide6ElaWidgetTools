@@ -77,7 +77,7 @@ void ElaSliderStyle::drawComplexControl(ComplexControl control, const QStyleOpti
                 {
                     if (!_lastState.testFlag(QStyle::State_Sunken))
                     {
-                        _startRadiusAnimation(sliderHandleRect.width() / 2.8, sliderHandleRect.width() / 4.5, const_cast<QWidget*>(widget));
+                        _startRadiusAnimation(sliderHandleRect.width() / 2.8, sliderHandleRect.width() / 4.5, sliderHandleRect, const_cast<QWidget*>(widget));
                         _lastState = sopt->state;
                     }
                     painter->drawEllipse(QPointF(sliderHandleRect.center().x() + 1, sliderHandleRect.center().y() + 1), _circleRadius, _circleRadius);
@@ -89,12 +89,12 @@ void ElaSliderStyle::drawComplexControl(ComplexControl control, const QStyleOpti
                 {
                     if (!_lastState.testFlag(QStyle::State_MouseOver))
                     {
-                        _startRadiusAnimation(_circleRadius, sliderHandleRect.width() / 2.8, const_cast<QWidget*>(widget));
+                        _startRadiusAnimation(_circleRadius, sliderHandleRect.width() / 2.8, sliderHandleRect, const_cast<QWidget*>(widget));
                         _lastState = sopt->state;
                     }
                     if (_lastState.testFlag(QStyle::State_Sunken))
                     {
-                        _startRadiusAnimation(_circleRadius, sliderHandleRect.width() / 2.8, const_cast<QWidget*>(widget));
+                        _startRadiusAnimation(_circleRadius, sliderHandleRect.width() / 2.8, sliderHandleRect, const_cast<QWidget*>(widget));
                         _lastState = sopt->state;
                     }
                     painter->drawEllipse(QPointF(sliderHandleRect.center().x() + 1, sliderHandleRect.center().y() + 1), _circleRadius, _circleRadius);
@@ -105,7 +105,7 @@ void ElaSliderStyle::drawComplexControl(ComplexControl control, const QStyleOpti
         {
             if (_lastState.testFlag(QStyle::State_MouseOver) || _lastState.testFlag(QStyle::State_Sunken))
             {
-                _startRadiusAnimation(_circleRadius, sliderHandleRect.width() / 3.8, const_cast<QWidget*>(widget));
+                _startRadiusAnimation(_circleRadius, sliderHandleRect.width() / 3.8, sliderHandleRect, const_cast<QWidget*>(widget));
                 _lastState &= ~QStyle::State_MouseOver;
                 _lastState &= ~QStyle::State_Sunken;
             }
@@ -151,16 +151,18 @@ int ElaSliderStyle::styleHint(StyleHint hint, const QStyleOption* option, const 
     return QProxyStyle::styleHint(hint, option, widget, returnData);
 }
 
-void ElaSliderStyle::_startRadiusAnimation(qreal startRadius, qreal endRadius, QWidget* widget) const
+void ElaSliderStyle::_startRadiusAnimation(qreal startRadius, qreal endRadius, const QRect& handleRect, QWidget* widget) const
 {
     ElaSliderStyle* style = const_cast<ElaSliderStyle*>(this);
     QPropertyAnimation* circleRadiusAnimation = new QPropertyAnimation(style, "circleRadius");
+    // 手柄悬停过渡期间位置不变，脏区域即手柄矩形外扩 2px（含描边与抗锯齿溢出）
+    QRect animRect = handleRect.adjusted(-2, -2, 2, 2);
     QPointer<QWidget> widgetGuard = widget;
     connect(circleRadiusAnimation, &QPropertyAnimation::valueChanged, style, [=](const QVariant& value) {
                 this->_circleRadius = value.toReal();
                 if (widgetGuard && widgetGuard->isVisible())
                 {
-                    widgetGuard->update();
+                    widgetGuard->update(animRect);
                 } });
     circleRadiusAnimation->setEasingCurve(QEasingCurve::InOutSine);
     circleRadiusAnimation->setStartValue(startRadius);

@@ -1,5 +1,6 @@
 #include "ElaListViewStyle.h"
 
+#include <QAbstractScrollArea>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPointer>
@@ -39,6 +40,7 @@ void ElaListViewStyle::drawPrimitive(PrimitiveElement element, const QStyleOptio
                 _firstPaint = false;
                 _hoverIndex = isHovered ? rowKey : QPersistentModelIndex();
                 _hoverInRatio = isHovered ? 1 : 0;
+                _hoverInRect = isHovered ? vopt->rect : QRect();
             }
             else if (rowKey.isValid() && isHovered && rowKey != _hoverIndex)
             {
@@ -46,17 +48,17 @@ void ElaListViewStyle::drawPrimitive(PrimitiveElement element, const QStyleOptio
                 _fadeOutIndex = _hoverIndex;
                 if (_fadeOutIndex.isValid())
                 {
-                    _startRowHoverAnimation(false, widget);
+                    _startRowHoverAnimation(false, _hoverInRect, widget);
                 }
                 _hoverIndex = rowKey;
-                _startRowHoverAnimation(true, widget);
+                _startRowHoverAnimation(true, vopt->rect, widget);
             }
             else if (rowKey.isValid() && !isHovered && rowKey == _hoverIndex)
             {
                 // 悬停移出行外
                 _fadeOutIndex = _hoverIndex;
                 _hoverIndex = QPersistentModelIndex();
-                _startRowHoverAnimation(false, widget);
+                _startRowHoverAnimation(false, _hoverInRect, widget);
             }
             qreal hoverRatio = 0;
             if (rowKey.isValid())
@@ -218,13 +220,16 @@ QSize ElaListViewStyle::sizeFromContents(ContentsType type, const QStyleOption* 
     return QProxyStyle::sizeFromContents(type, option, size, widget);
 }
 
-void ElaListViewStyle::_startRowHoverAnimation(bool isFadeIn, const QWidget* widget) const
+void ElaListViewStyle::_startRowHoverAnimation(bool isFadeIn, const QRect& rowRect, const QWidget* widget) const
 {
     QVariantAnimation*& rowAnimation = isFadeIn ? _hoverInAnimation : _hoverOutAnimation;
     if (!rowAnimation)
     {
         rowAnimation = new QVariantAnimation;
-        QPointer<QWidget> widgetGuard = const_cast<QWidget*>(widget);
+        const QAbstractScrollArea* scrollArea = dynamic_cast<const QAbstractScrollArea*>(widget);
+        // 行悬停过渡的脏区域是视口上的整行条带（同 QAbstractItemView 自身悬停处理），
+        // 必须走 viewport()->update(rect)，rect 为视口坐标
+        QPointer<QWidget> widgetGuard = scrollArea ? const_cast<QAbstractScrollArea*>(scrollArea)->viewport() : const_cast<QWidget*>(widget);
         connect(rowAnimation, &QVariantAnimation::valueChanged, this, [=](const QVariant& value) {
             if (isFadeIn)
             {
@@ -236,9 +241,21 @@ void ElaListViewStyle::_startRowHoverAnimation(bool isFadeIn, const QWidget* wid
             }
             if (widgetGuard && widgetGuard->isVisible())
             {
-                widgetGuard->update();
+                const QRect& animRect = isFadeIn ? this->_hoverInRect : this->_hoverOutRect;
+                if (animRect.isValid())
+                {
+                    widgetGuard->update(QRect(0, animRect.y(), widgetGuard->width(), animRect.height()).adjusted(0, -2, 0, 2));
+                }
             }
         });
+    }
+    if (isFadeIn)
+    {
+        _hoverInRect = rowRect;
+    }
+    else
+    {
+        _hoverOutRect = rowRect;
     }
     rowAnimation->stop();
     rowAnimation->setDuration(150);
