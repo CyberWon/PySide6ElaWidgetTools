@@ -105,13 +105,20 @@ if (MSVC)
 endif ()
 find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_SDK_DIR}/bin")
 if (WIN32)
+    # 统一转换为正斜杠路径。QT_SDK_DIR 等可能携带 Windows 反斜杠
+    # （如 D:\a\...\bin），直接内插进 install(CODE) 生成的
+    # cmake_install.cmake 会被当作非法转义序列（Invalid character escape '\a'），
+    # 导致 cmake --install 报 Syntax error。
+    file(TO_CMAKE_PATH "${WINDEPLOYQT_EXECUTABLE}" WINDEPLOYQT_EXECUTABLE)
+    file(TO_CMAKE_PATH "${QT_SDK_DIR}" QT_SDK_DIR_NORMALIZED)
+    file(TO_CMAKE_PATH "${CMAKE_INSTALL_PREFIX}" INSTALL_PREFIX_NORMALIZED)
     install(CODE "
-    if(EXISTS \"${WINDEPLOYQT_EXECUTABLE}\" AND NOT EXISTS \"${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/platforms\")
+    if(EXISTS \"${WINDEPLOYQT_EXECUTABLE}\" AND NOT EXISTS \"${INSTALL_PREFIX_NORMALIZED}/${PROJECT_NAME}/platforms\")
         execute_process(
-            COMMAND \"${CMAKE_COMMAND}\" -E env PATH=\"${QT_SDK_DIR}/bin\"
+            COMMAND \"${CMAKE_COMMAND}\" -E env PATH=\"${QT_SDK_DIR_NORMALIZED}/bin\"
                 \"${WINDEPLOYQT_EXECUTABLE}\"
                 \"$<TARGET_FILE_DIR:${PROJECT_NAME}>/$<TARGET_FILE_NAME:${PROJECT_NAME}>\"
-                --dir \"${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}\"
+                --dir \"${INSTALL_PREFIX_NORMALIZED}/${PROJECT_NAME}\"
                 --no-compiler-runtime
                 --no-system-d3d-compiler
                 --no-opengl-sw
