@@ -25,6 +25,9 @@
 #include "ElaIconButton.h"
 #include "ElaTheme.h"
 #include "private/ElaAppBarPrivate.h"
+#ifdef Q_OS_MACOS
+#include "private/ElaCocoaWindowHelper.h"
+#endif
 Q_PROPERTY_CREATE_Q_CPP(ElaAppBar, bool, IsStayTop)
 Q_PROPERTY_CREATE_Q_CPP(ElaAppBar, bool, IsDefaultClosed)
 Q_PROPERTY_CREATE_Q_CPP(ElaAppBar, bool, IsOnlyAllowMinAndClose)
@@ -55,7 +58,14 @@ ElaAppBar::ElaAppBar(QWidget* parent)
     window()->setWindowFlags((window()->windowFlags()) | Qt::WindowMinimizeButtonHint | Qt::FramelessWindowHint);
 #endif
 #else
+#ifdef Q_OS_MACOS
+    // macOS: 不使用 Qt::FramelessWindowHint。它会移除 NSWindow 的 Titled mask，
+    // 导致 showMaximized() 退化为原地拉伸铺满屏幕而非原生最大化。
+    // 这里保留原生标题栏，仅隐藏其外观，从而保住原生最大化/全屏/分屏行为（Issue #9）。
+    // 无边框外观在窗口 Show 事件中通过 Cocoa API 应用，见 eventFilter。
+#else
     window()->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::FramelessWindowHint | Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint | Qt::WindowSystemMenuHint | Qt::WindowFullscreenButtonHint | Qt::WindowSystemMenuHint);
+#endif
 #endif
     setMouseTracking(true);
     setObjectName("ElaAppBar");
@@ -333,6 +343,15 @@ void ElaAppBar::setIsFixedSize(bool isFixedSize)
     }
 #else
     bool isVisible = window()->isVisible();
+#ifdef Q_OS_MACOS
+    window()->setWindowFlag(Qt::WindowMaximizeButtonHint, !isFixedSize);
+    if (isVisible)
+    {
+        window()->show();
+    }
+    // setWindowFlag 会重建原生窗口，重新应用无边框外观设置
+    ElaCocoaWindowHelper::setupFramelessWindow(window());
+#else
     window()->setWindowFlags((window()->windowFlags()) | Qt::FramelessWindowHint | Qt::WindowMinimizeButtonHint | Qt::WindowCloseButtonHint);
     if (!isFixedSize)
     {
@@ -342,6 +361,7 @@ void ElaAppBar::setIsFixedSize(bool isFixedSize)
     {
         window()->show();
     }
+#endif
 #endif
     Q_EMIT pIsFixedSizeChanged();
 }
@@ -866,6 +886,21 @@ bool ElaAppBar::eventFilter(QObject* obj, QEvent* event)
         break;
     }
 #endif
+#ifdef Q_OS_MACOS
+    case QEvent::Show:
+    {
+        // 通过 Cocoa API 应用无边框外观，保留原生窗口系统行为（Issue #9）
+        ElaCocoaWindowHelper::setupFramelessWindow(window());
+        break;
+    }
+#endif
+    case QEvent::WindowStateChange:
+    {
+        // 同步最大化/还原图标状态（Windows 由 nativeProc 的 WM_SIZE 同步，
+        // macOS 等平台在此同步，修复原生最大化后图标不失步）
+        d->_changeMaxButtonAwesome(window()->isMaximized());
+        break;
+    }
     case QEvent::Close:
     {
         QCloseEvent* closeEvent = dynamic_cast<QCloseEvent*>(event);
