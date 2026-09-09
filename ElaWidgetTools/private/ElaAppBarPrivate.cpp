@@ -8,6 +8,9 @@
 #include "ElaIconButton.h"
 #include "ElaNavigationBar.h"
 #include "ElaText.h"
+#ifdef Q_OS_MACOS
+#include "private/ElaCocoaWindowHelper.h"
+#endif
 
 #include <QApplication>
 #include <QDebug>
@@ -86,6 +89,10 @@ void ElaAppBarPrivate::onStayTopButtonClicked()
 	{
 		q->window()->setWindowFlag(Qt::WindowStaysOnTopHint, _pIsStayTop);
 	}
+#ifdef Q_OS_MACOS
+	// setWindowFlag 可能重建原生窗口，重新应用无边框外观设置
+	ElaCocoaWindowHelper::setupFramelessWindow(q->window());
+#endif
 #endif
 	_stayTopButton->setIsSelected(_pIsStayTop);
 
